@@ -1,6 +1,6 @@
 # COSC612
 
-## Project: I Have No Mouth and I Must Eat: A Recipe Website
+## I Have No Mouth and I Must Eat: A Recipe Website
 
 ## Members:
 ```
