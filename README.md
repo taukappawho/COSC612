@@ -11,3 +11,6 @@
   James Naurot
 ```
 
+## Work Breakdown
+| Assignee | Name | Email | Task | Duration (hours) | Dependency | Due date | Note and Peer Evalutaion |
+|---|---|---|---|---|---|---|---|
