@@ -8,7 +8,7 @@
 
    What happens if people have different opinions about the quality of the work? As long as the work achieves it's main purpose, the specific content of the work itself is secondary. If two memebers have conflicting opinions, and they cannot compromise, then it is up to the group as a whole to make a decision.
 
-   What happens if people have different work habits? Facilitating flexible environment is important in accommodating different work habits.
+   What happens if people have different work habits? Facilitating a flexible environment is important in accommodating different work habits.
 3. ## Facilitator Norms:
 4. ## Communication Norms:
 5. ## Meeting Norms:
