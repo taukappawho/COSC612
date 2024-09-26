@@ -15,24 +15,32 @@
    #### What happens if people have different work habits?
     Facilitating a flexible environment is important in accommodating different work habits, but we should be able to largely work independently.
    
-3. ## Facilitator Norms:
+2. ## Facilitator Norms:
    #### Will you use a facilitator?
-      Whoever is the facilitator of that sprint is IT.
+      Yes.
 
    #### How will the facilitator be chosen?
-     whoever volunteers in the pool of remaining individuals
+     Whoever volunteers in the pool of remaining individuals.
   
      #### Will you rotate the position?
-     yes
-
+     Yes. The pattern of facilitator selection will be repeated once all members have been the facilitator.
+   
      #### What are the responsibilities of the facilitator?
-      to complete any uncompleted work and submit the documents for the sprint
+      • To communicate with the professor
+      • Complete any uncompleted work
+      • Submit the documents for the sprint
+      • Focus the team on the task (both short term and long term)
+      • Get participation from all team members
+      • Keep the team to its agreed-upon time frame (both short term and long term)
+      • Suggest alternative procedures when the team is stalled
+      • Help team members confront problems
+      • Summarize and clarify the team’s decisions
    
 4. ## Communication Norms:
    #### When should communication takes place and through what medium (e.g., do some people prefer to communicate through e-mail while others would rather talk on the phone)?
-    We have Discord setup, and questions can be asked at any time. Thus far, it has worked well. Questions can be asked, answered, files shared, sreenshots shared. All without everyone needing to be present simultaneously.
+    We have Discord setup, and questions can be asked at any time. Thus far it has worked well. Questions can be asked, answered, files shared, screenshots shared. All without everyone needing to be present simultaneously.
 
-6. ## Meeting Norms:
+5. ## Meeting Norms:
    #### What is everyone's schedule?
    
       Everyone agreed that Tuesday 3:00 pm is fine.
