@@ -27,13 +27,21 @@
    
      #### What are the responsibilities of the facilitator?
       • To communicate with the professor
+   
       • Complete any uncompleted work
+   
       • Submit the documents for the sprint
+   
       • Focus the team on the task (both short term and long term)
+   
       • Get participation from all team members
+   
       • Keep the team to its agreed-upon time frame (both short term and long term)
+   
       • Suggest alternative procedures when the team is stalled
+   
       • Help team members confront problems
+   
       • Summarize and clarify the team’s decisions
    
 4. ## Communication Norms:
