@@ -66,11 +66,11 @@
  
 6. ## Consideration Norms:
    #### Can people eat at meetings?
-   sure
+   Sure.
    #### Smoke cigarettes?
-   certainly
+   Certainly.
    #### Smoke other stuff?
-   only if they bring enough to share
+   Only if they bring enough to share.
 
    #### What happens if someone is dominating the discussion?
    follow the suggestions on how to deal with difficult individuals. politely steer the conversation to others, and perhaps discreetly and privately address the issue with the individual in a non-confrontational manner.
