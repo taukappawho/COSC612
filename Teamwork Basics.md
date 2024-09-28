@@ -73,7 +73,7 @@
    Only if they bring enough to share.
 
    #### What happens if someone is dominating the discussion?
-   follow the suggestions on how to deal with difficult individuals. politely steer the conversation to others, and perhaps discreetly and privately address the issue with the individual in a non-confrontational manner.
+   Follow the suggestions on how to deal with difficult individuals. Politely steer the conversation to others, and perhaps discreetly and privately address the issue with the individual in a non-confrontational manner.
 
    #### How can norms be changed if someone is not comfortable with what is going on in the team?
    They can state they're not comfortable with a particular norm in Discord. They can ask for a group meeting to discuss what could be different/how things could be handled differently. They could contact the professor who is always available and willing to help in such situations.
