@@ -93,13 +93,13 @@
    Why? To improve group cohesion, productivity, and positive teamwork.
    #### Recognize and assist these group problems: 
 
-   1. Floundering
-   2. Getting Off Topic
-   3. Making Decisions Too Quickly
-   4. Not Making Decisions	
-   5. Conflict Between Members
-   6. Excluding or Ridiculing Others
-   7. Not Pulling Their Weight	
+   1. Floundering - Struggling to move forward because goals or direction aren't clear.
+   2. Getting Off Topic - Losing focus by talking about things that aren’t related to the main issue.
+   3. Making Decisions Too Quickly - Deciding too fast without thinking enough, possibly missing important details.
+   4. Not Making Decisions	- Avoiding decisions or taking too long to decide, which slows down progress.
+   5. Conflict Between Members - Disagreements or arguments between group members that make it hard to work together.
+   6. Excluding or Ridiculing Others - Leaving out or making fun of others, which hurts teamwork and creates a bad                atmosphere.
+   7. Not Pulling Their Weight - Not doing their fair share of the work, leaving others to pick up the slack.
    
    #### Not pulling their weight: 
    During an information systems capstone class, one student consistently failed to contribute to the group's assigned tasks. Despite being given responsibilities, this individual did not deliver. It was eventually          discovered, in real time by the entire group, that the student had been modifying documents to falsely reflect his participation. When confronted directly, he continued to offer excuses and untruths. By the end of the    semester, the student received poor feedback from the group, which ultimately prevented him from passing the capstone class and completing his degree.
