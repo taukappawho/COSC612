@@ -79,5 +79,30 @@
    They can state they're not comfortable with a particular norm in Discord. They can ask for a group meeting to discuss what could be different/how things could be handled differently. They could contact the professor who is always available and willing to help in such situations.
    
 # Hints for Handling Difficult Behavior
-
+   #### Handling Difficult Behavior
+   What? Strategies for managing difficult behaviors in group settings.
+   Why? To improve group cohesion, productivity, and positive teamwork.
+   #### Recognize and assist these behaviors:
+   1. Overly Talkative - Direct conversation to others; if the problem persists, discreetly and in a non-confrontational manner explain the importance of input from the entire group
+   2. Too Quiet - Encourage involvement by asking for their thoughts or appreciate their contributions.
+   3. Argumentative - Assess their arguments (or critique) against the group’s progress. If they are targeting others, point out how their actions are hindering the team’s objectives and morale.
+   4. Complainant - First, listen to the complainer attentively. If the issue is legitimate, use it as an opportunity for group problem-solving. Encourage the complainant to then collaborate.
 # Hints for Handling Group Problems
+   #### Handling Group Problems
+   What? How to handle common team problems.
+   Why? To improve group cohesion, productivity, and positive teamwork.
+   #### Recognize and assist these group problems: 
+
+   1. Floundering
+   2. Getting Off Topic
+   3. Making Decisions Too Quickly
+   4. Not Making Decisions	
+   5. Conflict Between Members
+   6. Excluding or Ridiculing Others
+   7. Not Pulling Their Weight	
+   
+   #### Not pulling their weight: 
+   During an information systems capstone class, one student consistently failed to contribute to the group's assigned tasks. Despite being given responsibilities, this individual did not deliver. It was eventually          discovered, in real time by the entire group, that the student had been modifying documents to falsely reflect his participation. When confronted directly, he continued to offer excuses and untruths. By the end of the    semester, the student received poor feedback from the group, which ultimately prevented him from passing the capstone class and completing his degree.
+   #### Ridiculing: 
+   In the same information systems capstone class of 2023, a group member was ridiculing another member’s contribution. When the bully was confronted, conflict arose, leading to bitterness and resentment within the          group. To resolve the tension, the team decided to bring in the professor as a mediator. Through open dialogue and mediation, both parties were able to express their frustrations, and the group established clearer        communication guidelines to ensure mutual respect moving forward. Ultimately, this helped the team work more effectively for the remainder of the project
+   
