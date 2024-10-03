@@ -5,4 +5,4 @@
 | Jamie Cooper | jcooper4@students.towson.edu ||10||||
 | Christopher Chung | cchung6@students.towson.edu ||10||||
 | Bhuvan Sai Reddy Seelam | bseelam1@students.to10wson.edu ||10||||
-| James Naurot | jnauro1@students.towson.edu |Assisting w/ Task4 & Task5|10||10/5/2024||
+| James Naurot | jnauro1@students.towson.edu |Assisting w/ Task4 & Task5|10||10/7/2024||
