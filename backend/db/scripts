@@ -1,0 +1,27 @@
+#returns all ingredients from all recipes in a list(0,2,3)
+SELECT * FROM recipes.recipe_ing
+where recipe in (0,2,3);
+
+
+#finds a recipe by name and returns all info about it
+select *
+from recipes.recipe_ing RI join recipes.recipe R on R.id = RI.recipe_id
+where R.name = "chili";
+
+#returns all recipes with all of these ingredients
+select recipe_id from recipes.recipe_ing
+where ingredient_id in (1,3)
+group by recipe_id
+having count(distinct ingredient_id) = 2;
+
+#returns all recipes with these ingredients in decreasing quantity
+SELECT recipe_id, COUNT(DISTINCT ingredient_id) AS Count
+FROM recipes.recipe_ing
+WHERE ingredient_id IN (1,2,3,4)
+GROUP BY recipe_id
+having Count > 0
+-- having Count > 0  and recipes.recipe.viewable = 1
+ORDER BY Count desc;
+-- limit 10 offset 10-- 
+
+#recipe.id, recipe_ing.recipe, recipe.name should be indexed for speed
