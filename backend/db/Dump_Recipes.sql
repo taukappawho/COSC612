@@ -78,8 +78,8 @@ DROP TABLE IF EXISTS `recipe_ing`;
 CREATE TABLE `recipe_ing` (
   `recipe_id` int NOT NULL,
   `ingredient_id` int NOT NULL,
-  `quantity` float NOT NULL DEFAULT '0',
-  `measure` varchar(45) NOT NULL DEFAULT 'none',
+  `quantity` float unsigned NOT NULL DEFAULT '0',
+  `units` int unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`recipe_id`,`ingredient_id`),
   KEY `ingredient_id_idx` (`ingredient_id`),
   CONSTRAINT `ingredient_id` FOREIGN KEY (`ingredient_id`) REFERENCES `ingredients` (`id`),
@@ -133,4 +133,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-10-17  3:20:41
+-- Dump completed on 2024-10-20  5:24:20
