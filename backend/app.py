@@ -1,10 +1,12 @@
 from typing import Annotated, Optional
 from fastapi import FastAPI, Form, HTTPException, status, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import pymysql
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
+import time
 import smtplib
 from dotenv import load_dotenv
 import os
@@ -33,18 +35,29 @@ app.add_middleware(
 ##### DB Stuff
 # Connect to MySQL database
 conn = pymysql.connect(
-    host="localhost",
-    user="python",
-    password="Python12",
-    database="recipes"
+    host="srv870.hstgr.io",
+    user="u882885499_python",
+    password="21nohtyP",
+    database="u882885499_recipes",
+    port=3306,
+    autocommit=True
 )
 # Fetch data from MySQL tables
-def fetch_data(query):
+def fetch_data(query, retries=3):
     cursor = conn.cursor()
-    cursor.execute(query)
-    data = cursor.fetchall()
-    cursor.close()
-    return data
+    for attempt in range(retries):
+       try:
+          cursor.execute(query)
+          data = cursor.fetchall()
+          cursor.close()
+          return data
+       except (pymysql.err.InterfaceError, pymysql.err.OperationalError) as e:
+          if e.args[0] in (2006, 0):
+             conn.ping(reconnect=True)
+             time.sleep(1)
+          else:
+             raise
+    raise Exception("Failed to fetch data after retries")
 def insert(query):
     cursor = conn.cursor()
     cursor.execute(query)
@@ -94,7 +107,7 @@ def verify_token(token):
 ##### Mail stuff
 def send_mail(user, email, route, effect):
     lines = [
-        f"From: {"noreply@bawlmorean.com"}", 
+        f"From: {'noreply@bawlmorean.com'}", 
         f"To: {email}", 
         "Subject: New Account", 
         f"Howdy {user}",
@@ -118,45 +131,50 @@ def send_mail(user, email, route, effect):
 @app.post("/login")
 async def login(name: Annotated[str, Form()], password: Annotated[str, Form()]):
     print("******\n******\n******")
-    print(f"user: {name}, password: {password}")
-    #retrieve username, password
-    #validate username length - return fail on nonconformance
+    print(f"name: {name}, password: {password}")
+    #retrieve name, password
+    #validate name length - return fail on nonconformance
     if len(name) < 5:
-        return {"msg": "name invalid"}
+        raise HTTPException(status_code=401, detail="Invalid credentials")
     else:
-        # lookup username in table, get hashed_password
-        query = f"select name,email,auth,id from user where name = \"{name}\" and password = \"{password}\""
-        print(f"query: {query}")
-        user = fetch_data(query)
-        if len(user) == 0:
-            return {"msg": "name/password invalid"}
-        user = user[0]
-        print(f"user: {user}")
-        user_info = {"name": user[0],"email":user[1], "auth": user[2], "id": user[3]}
-        print(f"user_info: {user_info}")
-        access_token = create_token({"sub": user[0],"email":user[1], "auth": user[2], "id": user[3] }, SESSION_TOKEN_EXP)
-        print(f"access_toke: {access_token}")
-        return {"access_token": access_token, "token_type": "bearer"}
+        # lookup name in table, get hashed_password
+        query = f"select name,email,auth,id from user where name='{name}' and password='{password}'"
+        # print(f"query: {query}")
+        response = fetch_data(query)
+        if len(response) == 0:
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        response = response[0]
+        # print(f"response: {response}")
+        token = create_token({"sub": response[0],"email":response[1], "auth": response[2], "id": response[3] }, SESSION_TOKEN_EXP)
+        # print(f"token: {token}")
+        response = JSONResponse(content={"message": "Login successful"})
+        response.headers["Authorization"] = f"Bearer {token}"
+        return response
 
 @app.post("/create")
-    #user should not be logged in -- test how??does it matter?
+    #logged in status status doesn't matter, can't create 2 accounts w/ same email
+    #   still - create button shouldn't be present when logged in
     #extract name and email
 async def create(name: Annotated[str, Form()], email: Annotated[str, Form()]):
-    print(f"name: {name}, email: {email}")
+    # print(f"name: {name}, email: {email}")
     if len(name) < 5:
-        return {"msg": "name invalid"}
-    #if user email in database - fail fast
-    query = f"select name,email,auth,id from user where email = \"{email}\""
-    print(f"query: {query}")
-    if len(fetch_data(query)) != 0:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    #if email in database - fail fast
+    query = f"select name,email,auth,id from user where email='{email}'"
+    # print(f"query: {query}")
+    response = fetch_data(query)
+    if len(response) != 0:
+        print(f"**************Account: {email} already exists!")
         return {"msg": "account already exists!"}
-    query = f"select name,email,auth,id from user where name = \"{name}\""
-    print(f"query: {query}")
-        #if name in database fail with response
-    if len(fetch_data(query)) != 0:
+    query = f"select name,email,auth,id from user where name='{name}'"
+    response = fetch_data(query)
+    # print(f"query: {query}")
+    #     #if name in database fail with response
+    if len(response) != 0:
+        # print(f"**************Name: {name} already exists!")        
         return {"msg": "name already in use"}
     #create entry in user table - {name},"not-set-yet",{email},{auth="1"}
-    query = f"insert into user (name, password, email) values(\"{name}\",\"Not-set-yet\",\"{email}\""
+    query = f"insert into user (name, password, email) values('{name}','Not-set-yet','{email}'"
     print(f"query: {query}")
     # TODO insert(query)
     
@@ -166,47 +184,41 @@ async def create(name: Annotated[str, Form()], email: Annotated[str, Form()]):
     #TODO create function to remove email_jwt from JWT_LIST in 15 minutes
     
     #create dynamic route
-    route = f"http://localhost:8000/verify?token={email_jwt}"
-    #create timeout with function to delete route if it still exists after 15 minutes
+    route = f"https://recipe.naurot.com/verify?token={email_jwt}"
+    #TODO create timeout with function to delete route if it still exists after 15 minutes
     #send email with link of dynamic route
     send_mail(name, email, route, " to finish creating account.\nLink expires in 15 minutes.")
-    # ***if route used - delete link
     return ({"status code": 200})
 
 @app.post("/reset")
 async def reset(email: Annotated[str, Form()]):
-    print(f"email: {email}")
-    query = f"select name, email from user where email = \"{email}\""
-    print(f"query: {query}")
-    user = fetch_data(query)
-    if len(user) == 0:
+    # print(f"email: {email}")
+    query = f"select name, email from user where email='{email}'"
+    # print(f"query: {query}")
+    response = fetch_data(query)
+    if len(response) == 0:
         return {"msg": f"Account {email} does not exist"}
-    user = user[0]
-    print(f"user: {user}")
-    if len(user[0]) < 5:
+    response = response[0]
+    print(f"response: {response}")
+    if len(response[0]) < 5:
         return {"msg": "user has been banned!"}
     #create dynameic route
     #create email jwt
-    email_jwt = create_token({"sub": "reset", "name": user[0],"email": email},MAIL_TOKEN_EXP)
+    email_jwt = create_token({"sub": "reset", "name": response[0],"email": email},MAIL_TOKEN_EXP)
     JWT_LIST.append(email_jwt)
     #TODO create function to remove email_jwt from JWT_LIST in 15 minutes
     
     #create dynamic route
-    route = f"http://localhost:8000/verify?token={email_jwt}"
+    route = f"https://recipe.naurot.com/verify?token={email_jwt}"
     #create timeout with function to delete route if it still exists after 15 minutes
-    send_mail(user[0], user[1],route, " to reset password.\nLink expires in 15 minutes.")
+    
     #send email with link of dynamic route
-    #extract email
-    #get username from user table using email
-    #if {username} == "" fail fast
-    #create dynameic route
-    #create timeout with function to delete route if it still exists after 15 minutes
-    #send email with link of dynamic route
-    # ***if route used - delete link
+    send_mail(response[0], response[1],route, " to reset password.\nLink expires in 15 minutes.")
     return ({"status code": 200})
 
 @app.get("/verify")
 async def verify(token = Query(...)):
+    print("--------\nIn Verify")
     print(f"token: {token}")
     user_info = verify_token(token)
     JWT_LIST.remove(token)
@@ -216,6 +228,7 @@ async def verify(token = Query(...)):
 
 @app.get("/recipes/view")
 def view():
+    print("--------\nIn recipes/view")
     #passed {"ingredients": [],"offset": xx, "limit": yy}
     #get above recipes from query
     #return JWT in header
@@ -223,6 +236,7 @@ def view():
 
 @app.get("/recipes/ai")
 def ai():
+    print("--------\nIn recipes/ai")
     #get recipe id passed as param
     #get recipe_id's vector
     #do cosine_similarity on all vectors that aren't this one
@@ -232,6 +246,7 @@ def ai():
 
 @app.post("/recipes/create")
 def create():
+    print("--------\nIn recipes/create")
     #validate JWT - fail with message
     #validate img not null, name != "", instructions > ?, ingredients > 0
     #create embedding of ingredient list
@@ -243,8 +258,9 @@ def create():
     #save files - instructions, image, vector(?)    
     return
 
-@app.delete("/recipes/delete")
-def delete():
+@app.delete("/recipes/delete{id}")
+async def delete(id):
+    print("--------\nIn recipes/delete")
     #validate JWT - fail with message
     #get recipe from recipe table (recipe id passed)
     #user id from JWT == creator from recipe - fast fail with message
@@ -253,6 +269,3 @@ def delete():
     #remove recipe from recipe table
     #return successful removal
     return
-
-
-
