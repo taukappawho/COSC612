@@ -1,8 +1,8 @@
 ## Files to create MySQL tables for program
--Dump20241017.sql creates all of the tables below
+-Dump20241022.sql creates all of the tables below
 
 -recipes is the database name
-- user - contains user info [name, password, email, auth, id]
+- user - contains user info [name, password, email, auth, id, uuid]
 - recipe
 - ingredients
 - recipe_ing
