@@ -1,15 +1,19 @@
 from typing import Annotated, Optional
-from fastapi import FastAPI, Form, HTTPException, status, Query
+from fastapi import FastAPI, Form, HTTPException, status, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
 import pymysql
-from passlib.context import CryptContext
+from passlib.context import CryptContext 
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
 import time
+import uuid
 import smtplib
 from dotenv import load_dotenv
+import asyncio
 import os
+from systemd import journal
 
 load_dotenv()
 
@@ -34,6 +38,7 @@ app.add_middleware(
 
 ##### DB Stuff
 # Connect to MySQL database
+PASSWORD = "not-set-yet"
 conn = pymysql.connect(
     host="srv870.hstgr.io",
     user="u882885499_python",
@@ -58,20 +63,47 @@ def fetch_data(query, retries=3):
           else:
              raise
     raise Exception("Failed to fetch data after retries")
-def insert(query):
+#Inserts, Updates, Deletes(?)
+def execute_query(query):
     cursor = conn.cursor()
     cursor.execute(query)
     conn.commit()
     conn.close()
-    
 
 ##### hash Stuff
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 def hash_password(password):
-    return pwd_context.has(password)
+    return pwd_context.hash(password)
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+##### UUID Stuff
+def get_uuid():
+    candidate = uuid.uuid4().hex
+    asyncio.create_task(schedule_cleanup(candidate))
+    return candidate
+def verify_uuid(candidate):
+    query = f"select name, email, auth, id from user where uuid='{candidate}'"
+    response = fetch_data(query)
+    return response
+def remove_uuid(candidate):
+    journal.send("---------- in dlete")
+    query = f"select * from user where uuid='{candidate}'"
+    response = fetch_data(query)
+    if response:
+        name, password, email, auth, id, uuid = response[0]
+        if password == PASSWORD:
+            query = f"delete from user where name='{name}'"
+        else:
+            query = f"update user set uuid='N' where name='{name}'"
+        execute_query(query)     
+async def schedule_cleanup(candidate):
+    await asyncio.sleep(900)
+    if verify_uuid(candidate):
+        remove_uuid(candidate)
+
 
 ##### JWT Stuff
-JWT_LIST = []
 # SECRET_KEY = os.getenv("SECRET_KEY")
 SECRET_KEY="my_secret_key"
 ALGORITHM = "HS256"
@@ -92,6 +124,7 @@ def create_token(data,exp):
     except HTTPException as e:
         print(f"Verification failed: {e.detail}")
     return encoded_jwt
+
 def verify_token(token):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"leeway": 60})
@@ -105,12 +138,12 @@ def verify_token(token):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 ##### Mail stuff
-def send_mail(user, email, route, effect):
+def send_mail(user, email, route, effect,subject):
     lines = [
         f"From: {'noreply@bawlmorean.com'}", 
         f"To: {email}", 
-        "Subject: New Account", 
-        f"Howdy {user}",
+        f"Subject: {subject}", 
+        f"Hello {user},\n",
         f"Please click this link: {route} {effect}"
         ]
 
@@ -126,7 +159,8 @@ def send_mail(user, email, route, effect):
     # Send the email
     server.sendmail("noreply@bawlmorean.com", email, msg)
     server.quit()
-
+    
+templates = Jinja2Templates(directory="templates")
 
 @app.post("/login")
 async def login(name: Annotated[str, Form()], password: Annotated[str, Form()]):
@@ -138,93 +172,133 @@ async def login(name: Annotated[str, Form()], password: Annotated[str, Form()]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     else:
         # lookup name in table, get hashed_password
-        query = f"select name,email,auth,id from user where name='{name}' and password='{password}'"
-        # print(f"query: {query}")
+
+        query = f"select name,email,auth,id,password from user where name='{name}'"
         response = fetch_data(query)
         if len(response) == 0:
             raise HTTPException(status_code=401, detail="Invalid credentials")
         response = response[0]
+        journal.send(f"pwd: {password}, pwd: {response[4]}")
+        if not verify_password(password, response[4]):
+            raise HTTPException(status_code=401, detail="Invalid credentials") 
         # print(f"response: {response}")
         token = create_token({"sub": response[0],"email":response[1], "auth": response[2], "id": response[3] }, SESSION_TOKEN_EXP)
         # print(f"token: {token}")
         response = JSONResponse(content={"message": "Login successful"})
         response.headers["Authorization"] = f"Bearer {token}"
-        return response
-
+        # return response
+        return JSONResponse(content={"message": "Login successful", "token": token})
+    
 @app.post("/create")
     #logged in status status doesn't matter, can't create 2 accounts w/ same email
     #   still - create button shouldn't be present when logged in
     #extract name and email
 async def create(name: Annotated[str, Form()], email: Annotated[str, Form()]):
-    # print(f"name: {name}, email: {email}")
+    
+    # name must be > 4 characters
     if len(name) < 5:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    
     #if email in database - fail fast
-    query = f"select name,email,auth,id from user where email='{email}'"
-    # print(f"query: {query}")
+    query = f"select email, uuid from user where email='{email}'"
     response = fetch_data(query)
-    if len(response) != 0:
-        print(f"**************Account: {email} already exists!")
+    journal.send(f"----- response: {response}",PRIORITY=6)
+    if len(response) > 0 and response[0][1] == "N":
         return {"msg": "account already exists!"}
-    query = f"select name,email,auth,id from user where name='{name}'"
+    
+    #if name in database fail with response
+    query = f"select name, uuid from user where name='{name}'"
     response = fetch_data(query)
-    # print(f"query: {query}")
-    #     #if name in database fail with response
-    if len(response) != 0:
-        # print(f"**************Name: {name} already exists!")        
+    if len(response) > 0 and response[0][1] == "N":       
         return {"msg": "name already in use"}
-    #create entry in user table - {name},"not-set-yet",{email},{auth="1"}
-    query = f"insert into user (name, password, email) values('{name}','Not-set-yet','{email}'"
-    print(f"query: {query}")
-    # TODO insert(query)
     
-    #create email jwt
-    email_jwt = create_token({"sub": "create", "name": name, "email": email},MAIL_TOKEN_EXP)
-    JWT_LIST.append(email_jwt)
-    #TODO create function to remove email_jwt from JWT_LIST in 15 minutes
+    #create uuid (uuid4 hex) - links backend --> email --> backend --> user/password --> backend
+    unique = get_uuid()
+    if len(response) > 0:  # User re-trying to create account
+        query = f"UPDATE user SET uuid='{unique}' WHERE name='{name}'"
+    else:
+        query = f"INSERT INTO user (name, password, email, uuid, auth) VALUES ('{name}', '{PASSWORD}', '{email}', '{unique}', 0)"
+    execute_query(query)
     
-    #create dynamic route
-    route = f"https://recipe.naurot.com/verify?token={email_jwt}"
-    #TODO create timeout with function to delete route if it still exists after 15 minutes
+    #create route with uuid
+    route = f"https://recipe.naurot.com/verify?token={unique}"
+    
     #send email with link of dynamic route
-    send_mail(name, email, route, " to finish creating account.\nLink expires in 15 minutes.")
+    send_mail(name, email, route, " to finish creating account.\nLink expires in 15 minutes.", "New Account")
     return ({"status code": 200})
 
 @app.post("/reset")
 async def reset(email: Annotated[str, Form()]):
     # print(f"email: {email}")
-    query = f"select name, email from user where email='{email}'"
-    # print(f"query: {query}")
+    query = f"select name, email, uuid, auth from user where email='{email}'"
+    # journal.send(query)
     response = fetch_data(query)
+    # journal.send(f"-------reset response: {response}")
     if len(response) == 0:
-        return {"msg": f"Account {email} does not exist"}
+        raise HTTPException(status_code=401, detail="Invalid credentials")
     response = response[0]
-    print(f"response: {response}")
+    journal.send(f"-----in reset: response[0]: {response}")
+
+    if response[3] == "0":
+        return {"msg": f"Account {email} does not exist"}
+    
     if len(response[0]) < 5:
         return {"msg": "user has been banned!"}
-    #create dynameic route
-    #create email jwt
-    email_jwt = create_token({"sub": "reset", "name": response[0],"email": email},MAIL_TOKEN_EXP)
-    JWT_LIST.append(email_jwt)
-    #TODO create function to remove email_jwt from JWT_LIST in 15 minutes
+
+    unique = get_uuid()
+    query = f"UPDATE user SET uuid='{unique}' WHERE name='{response[0]}'"
+    execute_query(query)
     
     #create dynamic route
-    route = f"https://recipe.naurot.com/verify?token={email_jwt}"
-    #create timeout with function to delete route if it still exists after 15 minutes
+    route = f"https://recipe.naurot.com/verify?token={unique}"
     
     #send email with link of dynamic route
-    send_mail(response[0], response[1],route, " to reset password.\nLink expires in 15 minutes.")
+    send_mail(response[0], response[1],route, " to reset password.\nLink expires in 15 minutes.", "Password Reset")
     return ({"status code": 200})
 
-@app.get("/verify")
-async def verify(token = Query(...)):
-    print("--------\nIn Verify")
-    print(f"token: {token}")
-    user_info = verify_token(token)
-    JWT_LIST.remove(token)
-    # return {"message": "Token is valid", "user_info": user_info}
-    return f"<html><body><button>Password</button></body></html>"
 
+@app.get("/verify", response_class=HTMLResponse)
+async def verify(request: Request ,token = Query(...)):
+    journal.send(f"----In verify: token: {token}",PRIORITY=6)
+    response = verify_uuid(token)
+    if response:
+        response = response[0]
+        if response[2] == "0":
+            text = "Create Account"
+        else:
+            text = "Reset Password"
+        journal.send(f"----In verify: uuid found: true",PRIORITY=6)
+        context = {
+            "request": request,
+            "token": token,
+            "text": text
+        }
+        return templates.TemplateResponse("password.html", context)
+    else:
+        journal.send(f"----In verify: uuid found: false",PRIORITY=6)        
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+
+@app.post("/password")
+async def password(password: Annotated[str, Form()], token: Annotated[str, Query(...)]):
+    journal.send(f"-----In password: {password}\n\ttoken: {token}")
+    query = f"select * from user where uuid='{token}'"
+    response = fetch_data(query)
+    journal.send(f"-----in password {response}") 
+    if len(response) == 0:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+    if len(response) > 1:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    response = response[0]
+    if response[3] == 0:
+        auth = 1
+    else:
+        auth = response[3]
+    journal.send(f"-----in password {response}")
+    password = hash_password(password)
+    query = f"update user set uuid='N', auth={auth}, password='{password}' where name='{response[0]}'"
+    execute_query(query)
+    
+    
 
 @app.get("/recipes/view")
 def view():
