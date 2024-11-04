@@ -10,24 +10,31 @@ function CreateAccount() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!username || !email) {
-      setMessage('Username and email are required');
-      return;
-    }
     try {
+      const formData = new URLSearchParams();
+      formData.append('name', username);
+      formData.append('email', email);
+
       const response = await axios.post('http://localhost:8000/create',
-        new URLSearchParams({ name: username, email: email }),
-        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        formData,
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        }
       );
+
       console.log('Response:', response.data);
-      setMessage(response.data.status || response.data.msg);
-      if (response.data.status) {
+
+      if (response.data.msg) {
+        setMessage(response.data.msg);
+      } else if (response.data.status === 200) {
+        setMessage('Check your email to complete registration');
         setTimeout(() => navigate('/'), 3000);
       }
     } catch (error) {
-      console.error('Error object:', error);
-      console.error('Error response:', error.response);
-      setMessage('An error occurred: ' + (error.response?.data?.message || error.message || 'Unknown error'));
+      console.error('Error details:', error.response || error);
+      setMessage('An error occurred: ' + (error.response?.data?.detail || error.message));
     }
   };
 

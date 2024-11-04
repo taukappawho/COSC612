@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const Login = () => {
   const [name, setName] = useState('');
@@ -10,25 +10,38 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name || !password) {
-      setError('Username and password are required');
-      return;
-    }
     try {
-      const response = await axios.post('http://localhost:8000/login', {
-        name,
-        password
-      }, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
+      const formData = new URLSearchParams();
+      formData.append('name', name);
+      formData.append('password', password);
+
+      const response = await axios.post('http://localhost:8000/login',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+          }
         }
+      );
+
+      console.log('Login response:', response.data);
+
+
+      if (response.data.message === "Login successful") {
+        const token = response.data.token || response.data.access_token;
+        localStorage.setItem('token', token);
+        navigate('/');
+      } else {
+        setError('Login failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Login error:', {
+        message: error.message,
+        response: error.response?.data
       });
 
-      localStorage.setItem('token', response.data.access_token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      navigate('/');
-    } catch (error) {
-      setError('Login failed: ' + (error.response?.data?.message || 'Username/password not valid'));
+      setError('Login failed: ' + (error.response?.data?.detail || error.message));
     }
   };
 

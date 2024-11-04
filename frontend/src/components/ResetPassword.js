@@ -9,21 +9,25 @@ function ResetPassword() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email) {
-      setMessage('Email is required');
-      return;
-    }
     try {
+      const formData = new URLSearchParams();
+      formData.append('email', email);
+
       const response = await axios.post('http://localhost:8000/reset',
-        new URLSearchParams({ email: email }),
-        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        formData,
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          }
+        }
       );
-      setMessage(response.data.status || response.data.msg);
-      if (response.data.status) {
+
+      setMessage(response.data.msg || 'Check your email for reset instructions');
+      if (response.data.status === 200) {
         setTimeout(() => navigate('/'), 3000);
       }
     } catch (error) {
-      setMessage('An error occurred: ' + (error.response?.data?.message || 'Unknown error'));
+      setMessage('An error occurred: ' + (error.response?.data?.detail || 'Unknown error'));
     }
   };
 

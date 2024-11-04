@@ -7,20 +7,32 @@ function Header() {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    window.location.href = '/login';
+    window.location.href = '/';
   };
 
   return (
     <header>
       <nav>
         <div className="logo-container">
-          <img src={chefHat} alt="Chef Hat" />
+          <Link to="/">
+            <img src={chefHat} alt="Chef Hat" />
+          </Link>
         </div>
         <ul className="nav-links">
-          {!token && <li><Link to="/login" className="button">Login</Link></li>}
-          {!token && <li><Link to="/create-account" className="button">Create Account</Link></li>}
-          <li><Link to="/reset-password" className="button">Reset Password</Link></li>
-          {token && <li><button onClick={handleLogout} className="button">Logout</button></li>}
+          {!token ? (
+            <>
+              <li><Link to="/login" className="button">Login</Link></li>
+              <li><Link to="/create-account" className="button">Create Account</Link></li>
+              <li><Link to="/reset-password" className="button">Reset Password</Link></li>
+            </>
+          ) : (
+            <>
+              <li><Link to="/profile" className="button">Profile</Link></li>
+              <li><Link to="/add-recipe" className="button">Add Recipe</Link></li>
+              <li><Link to="/reset-password" className="button">Reset Password</Link></li>
+              <li><Link to="/" onClick={handleLogout} className="button">Logout</Link></li>
+            </>
+          )}
         </ul>
       </nav>
     </header>

@@ -36,3 +36,69 @@
     transform: rotate(360deg);
   }
 }
+
+input,
+select,
+textarea {
+  margin: 15px 0;
+  padding: 10px;
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.form-group {
+  margin: 20px 0;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.form-group input,
+.form-group select {
+  margin: 0;
+}
+
+input[type="file"] {
+  padding: 8px;
+  margin: 20px 0;
+}
+
+button {
+  margin: 15px 0;
+}
+
+.form-box {
+  padding: 20px;
+}
+
+.message,
+.error {
+  margin: 15px 0;
+}
+
+.form-box button,
+.container button {
+  margin: 10px 5px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+  justify-content: center;
+}
+
+.form-group button {
+  margin-left: 10px;
+}
+
+button[type="button"]:not(.form-group button) {
+  margin: 20px 0;
+  display: block;
+}
