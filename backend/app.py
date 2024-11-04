@@ -13,7 +13,10 @@ import smtplib
 from dotenv import load_dotenv
 import asyncio
 import os
+import pandas as pd
+import json
 from systemd import journal
+from collections import defaultdict
 
 load_dotenv()
 
@@ -122,7 +125,7 @@ def create_token(data,exp):
         verified_payload = verify_token(encoded_jwt)
         # print(f"Verified payload: {verified_payload}")
     except HTTPException as e:
-        print(f"Verification failed: {e.detail}")
+        journal.send(f"Verification failed: {e.detail}")
     return encoded_jwt
 
 def verify_token(token):
@@ -134,7 +137,7 @@ def verify_token(token):
         #     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
         # return user_info
     except JWTError as e:
-        print(f"JWT Error: {e}")  # Add this line for debugging
+        journal.send(f"JWT Error: {e}")  # Add this line for debugging
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
 ##### Mail stuff
@@ -164,8 +167,8 @@ templates = Jinja2Templates(directory="templates")
 
 @app.post("/login")
 async def login(name: Annotated[str, Form()], password: Annotated[str, Form()]):
-    print("******\n******\n******")
-    print(f"name: {name}, password: {password}")
+    journal.send("******\n******\n******")
+    journal.send(f"name: {name}, password: {password}")
     #retrieve name, password
     #validate name length - return fail on nonconformance
     if len(name) < 5:
@@ -280,10 +283,10 @@ async def verify(request: Request ,token = Query(...)):
 
 @app.post("/password")
 async def password(password: Annotated[str, Form()], token: Annotated[str, Query(...)]):
-    journal.send(f"-----In password: {password}\n\ttoken: {token}")
+    journal.send(f"-----In password: {password}\n\ttoken: {token}",PRIORITY=6)
     query = f"select * from user where uuid='{token}'"
     response = fetch_data(query)
-    journal.send(f"-----in password {response}") 
+    journal.send(f"-----in password {response}",PRIORITY=6) 
     if len(response) == 0:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
     if len(response) > 1:
@@ -293,35 +296,82 @@ async def password(password: Annotated[str, Form()], token: Annotated[str, Query
         auth = 1
     else:
         auth = response[3]
-    journal.send(f"-----in password {response}")
+    journal.send(f"-----in password {response}",PRIORITY=6)
     password = hash_password(password)
     query = f"update user set uuid='N', auth={auth}, password='{password}' where name='{response[0]}'"
     execute_query(query)
-    
-    
+
+RECIPE_DIRECTORY = "/home/user/backend/recipes"
 
 @app.get("/recipes/view")
 def view():
-    print("--------\nIn recipes/view")
-    #passed {"ingredients": [],"offset": xx, "limit": yy}
-    #get above recipes from query
-    #return JWT in header
-    return ({})
+    # query params ing_list, (offset, limit)?
+    journal.send("--------\nIn recipes/view", PRIORITY=6)
+    
+    query = (
+        "SELECT r.name AS recipe_name, r.id AS recipe_id, i.name AS ingredient_name, i.id AS ingredient_id, "
+        "ri.quantity, ri.units FROM recipe r "
+        "JOIN recipe_ing ri ON r.id = ri.recipe_id "
+        "JOIN ingredients i ON ri.ingredient_id = i.id "
+        "WHERE r.viewable = true "
+        "ORDER BY r.id, i.id"
+    )
+    response = fetch_data(query)
+    df = pd.DataFrame(response, columns=["recipe_name", "recipe_id", "ingredient_name", "ingredient_id", "quantity", "unit"])
+    data = df.to_dict(orient="records")
+
+    recipes_dict = defaultdict(lambda: {"name": None, "id": None, "ingredients": [], "image": None, "instructions": None})
+    for row in data:
+        recipe_id = row["recipe_id"]
+        if recipes_dict[recipe_id]["name"] is None:
+            recipes_dict[recipe_id]["name"] = row["recipe_name"]
+            recipes_dict[recipe_id]["id"] = recipe_id
+
+            # Add file paths if they exist
+            image_path = os.path.join(RECIPE_DIRECTORY, f"{recipe_id}.png")
+            instructions_path = os.path.join(RECIPE_DIRECTORY, f"{recipe_id}.txt")
+            if os.path.exists(image_path):
+                recipes_dict[recipe_id]["image"] = f"/recipes/{recipe_id}.png"
+            if os.path.exists(instructions_path):
+                recipes_dict[recipe_id]["instructions"] = f"/recipes/{recipe_id}.txt"
+
+        recipes_dict[recipe_id]["ingredients"].append({
+            "ingredient_name": row["ingredient_name"],
+            "ingredient_id": row["ingredient_id"],
+            "quantity": row["quantity"],
+            "unit": row["unit"]
+        })
+
+    recipes = list(recipes_dict.values())
+    output = {"recipes": recipes}
+
+    journal.send(json.dumps(output, indent=2), PRIORITY=6)
+    return JSONResponse(content=output)
 
 @app.get("/recipes/ai")
 def ai():
-    print("--------\nIn recipes/ai")
+    journal.send("--------\nIn recipes/ai",PRIORITY=6)
     #get recipe id passed as param
     #get recipe_id's vector
     #do cosine_similarity on all vectors that aren't this one
     #   rank in descending order
     #   return recipes that map to vectors
     return
+def get_JWT(request: Request):
+    jwt_token = request.headers.get("Authorization")
+    if not jwt_token:
+        raise HTTPException(status_code=401, detail="Authorization header missing")
+    if jwt_token.startswith("Bearer "):
+        jwt_token = jwt_token[7:]
+    return {"jwt": jwt_token}
 
 @app.post("/recipes/create")
-def create():
-    print("--------\nIn recipes/create")
-    #validate JWT - fail with message
+def create(request: Request):
+    journal.send("--------\nIn recipes/create",PRIORITY=6)
+    jwt = get_JWT(request)
+    payload = verify_token(jwt)
+    journal.send(f"payolad: {payload}")
+    #validate JWT - fail with message, must be logged in user, auth > 0
     #validate img not null, name != "", instructions > ?, ingredients > 0
     #create embedding of ingredient list
     #add *name,viewable=false,creator={username} to recipe table
@@ -334,7 +384,10 @@ def create():
 
 @app.delete("/recipes/delete{id}")
 async def delete(id):
-    print("--------\nIn recipes/delete")
+    journal.send("--------\nIn recipes/delete",PRIORITY=6)
+    jwt = get_JWT(request)
+    payload = verify_token(jwt)
+    journal.send(f"payolad: {payload}")
     #validate JWT - fail with message
     #get recipe from recipe table (recipe id passed)
     #user id from JWT == creator from recipe - fast fail with message
@@ -342,4 +395,40 @@ async def delete(id):
     #remove * from recipe_ingredients table where recipe = recipe id
     #remove recipe from recipe table
     #return successful removal
+    return
+
+@app.auth("/admin/auth")
+async def admin_auth():
+    journal.send("--------\nIn admin_auth",PRIORITY=6)
+    jwt = get_JWT(request)
+    payload = verify_token(jwt)
+    journal.send(f"payolad: {payload}",PRIORITY=6)
+    
+    return
+
+@app.auth("/admin/remove_user")
+async def admin_remove_user():
+    journal.send("--------\nIn admin_remove_user",PRIORITY=6)
+    jwt = get_JWT(request)
+    payload = verify_token(jwt)
+    journal.send(f"payolad: {payload}",PRIORITY=6)
+    
+    return
+
+@app.auth("/admin/recipe")
+async def admin_recipe():
+    journal.send("--------\nIn admin_recipe",PRIORITY=6)
+    jwt = get_JWT(request)
+    payload = verify_token(jwt)
+    journal.send(f"payolad: {payload}",PRIORITY=6)
+    
+    return
+
+@app.auth("/admin/ingredient")
+async def admin_ingredient():
+    journal.send("--------\nIn admin_ingredient",PRIORITY=6)
+    jwt = get_JWT(request)
+    payload = verify_token(jwt)
+    journal.send(f"payolad: {payload}",PRIORITY=6)
+    
     return
