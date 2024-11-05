@@ -60,6 +60,24 @@
         <p>&copy; 2024 I Have No Mouth And I Must Eat: A Recipe Website</p>
     </footer>
 
-    <script src="profile_script.js"></script>
+    <script>
+function viewRecipe(recipeName) {
+    window.location.href = `${recipeName}.html`;
+}
+
+function toggleMenu() {
+    const dropdown = document.getElementById("dropdownMenu");
+    dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+}
+
+window.onclick = function(event) {
+    if (!event.target.matches('.menu-btn')) {
+        const dropdown = document.getElementById("dropdownMenu");
+        if (dropdown.style.display === "block") {
+            dropdown.style.display = "none";
+        }
+    }
+}
+</script>
 </body>
 </html>
