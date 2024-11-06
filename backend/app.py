@@ -1,5 +1,5 @@
 from typing import Annotated, Optional
-from fastapi import FastAPI, Form, HTTPException, status, Query, Request
+from fastapi import FastAPI, Form, HTTPException, status, Query, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -60,14 +60,24 @@ def fetch_data(query, retries=3):
           cursor.close()
           return data
        except (pymysql.err.InterfaceError, pymysql.err.OperationalError) as e:
+          journal.send(f"***Fetching - retry",PRIORITY=6)
           if e.args[0] in (2006, 0):
              conn.ping(reconnect=True)
              time.sleep(1)
           else:
              raise
     raise Exception("Failed to fetch data after retries")
+
 #Inserts, Updates, Deletes(?)
 def execute_query(query):
+    conn = pymysql.connect(
+    host="srv870.hstgr.io",
+    user="u882885499_python",
+    password="21nohtyP",
+    database="u882885499_recipes",
+    port=3306,
+    autocommit=True
+)
     cursor = conn.cursor()
     cursor.execute(query)
     conn.commit()
@@ -123,7 +133,7 @@ def create_token(data,exp):
     #TODO remove testing of JWTs once I can create them w/o ....
     try:
         verified_payload = verify_token(encoded_jwt)
-        # print(f"Verified payload: {verified_payload}")
+        journal.send(f"Verified payload: {verified_payload}",PRIORITY=6)
     except HTTPException as e:
         journal.send(f"Verification failed: {e.detail}")
     return encoded_jwt
@@ -131,11 +141,13 @@ def create_token(data,exp):
 def verify_token(token):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"leeway": 60})
-        return payload
-        # user_info = payload.get("sub")
-        # if user_info is None:
-        #     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-        # return user_info
+        journal.send(f"verify_token: {payload}",PRIORITY=6)
+        user_name = payload.get("sub")
+        user_auth = payload.get("auth")
+        user_id = payload.get("id")
+        if user_name is None or user_auth is None or user_id is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        return {"name": user_name, "auth": user_auth, "id": user_id}
     except JWTError as e:
         journal.send(f"JWT Error: {e}")  # Add this line for debugging
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
@@ -176,21 +188,21 @@ async def login(name: Annotated[str, Form()], password: Annotated[str, Form()]):
     else:
         # lookup name in table, get hashed_password
 
-        query = f"select name,email,auth,id,password from user where name='{name}'"
+        query = f"select name,auth,id,password from user where name='{name}'"
         response = fetch_data(query)
         if len(response) == 0:
             raise HTTPException(status_code=401, detail="Invalid credentials")
         response = response[0]
-        journal.send(f"pwd: {password}, pwd: {response[4]}")
-        if not verify_password(password, response[4]):
+        journal.send(f"pwd: {password}, pwd: {response[3]}")
+        if not verify_password(password, response[3]):
             raise HTTPException(status_code=401, detail="Invalid credentials") 
         # print(f"response: {response}")
-        token = create_token({"sub": response[0],"email":response[1], "auth": response[2], "id": response[3] }, SESSION_TOKEN_EXP)
+        token = create_token({"sub": response[0], "auth": response[1], "id": response[2] }, SESSION_TOKEN_EXP)
         # print(f"token: {token}")
-        response = JSONResponse(content={"message": "Login successful"})
+        response = JSONResponse(content={"message": "Login successful", "token": token})
         response.headers["Authorization"] = f"Bearer {token}"
-        # return response
-        return JSONResponse(content={"message": "Login successful", "token": token})
+        return response
+        # return JSONResponse(content={"message": "Login successful", "token": token})
     
 @app.post("/create")
     #logged in status status doesn't matter, can't create 2 accounts w/ same email
@@ -261,7 +273,7 @@ async def reset(email: Annotated[str, Form()]):
 
 
 @app.get("/verify", response_class=HTMLResponse)
-async def verify(request: Request ,token = Query(...)):
+async def verify(request: Request,token = Query(...)):
     journal.send(f"----In verify: token: {token}",PRIORITY=6)
     response = verify_uuid(token)
     if response:
@@ -357,20 +369,54 @@ def ai():
     #   rank in descending order
     #   return recipes that map to vectors
     return
+
 def get_JWT(request: Request):
     jwt_token = request.headers.get("Authorization")
     if not jwt_token:
         raise HTTPException(status_code=401, detail="Authorization header missing")
-    if jwt_token.startswith("Bearer "):
-        jwt_token = jwt_token[7:]
+    if not jwt_token.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid authorization scheme. Expected 'Bearer <token>'")
+    jwt_token = jwt_token[len("Bearer "):].strip()    
     return {"jwt": jwt_token}
 
+
 @app.post("/recipes/create")
-def create(request: Request):
+async def create_recipe(
+    name: Annotated[str, Form()],
+    img: Annotated[str, Form()],
+    instructions: Annotated[str, Form()],
+    ingredients: Annotated[str, Form()],
+    token: dict = Depends(get_JWT),  # Token is validated using the get_JWT function
+):
+    jwt_token = token["jwt"]
     journal.send("--------\nIn recipes/create",PRIORITY=6)
-    jwt = get_JWT(request)
-    payload = verify_token(jwt)
-    journal.send(f"payolad: {payload}")
+    payload = verify_token(jwt_token)
+    journal.send(f"payload: {payload}")
+    if payload.get("auth") < 1:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    if not name or not instructions or not ingredients:
+        raise HTTPException(status_code=400, detail="Missing required fields")
+    creator = payload.get("id")
+    try:
+        query = f"insert into recipe name='{name}', creator='{creator}', viewable=0"
+        response = fetch_data(query)
+        journal.send(f"response: {response}",PRIORITY=6)
+            # Now handle ingredients (assuming ingredients is a comma-separated string)
+        for ingredient in ingredients.split(","):
+            ingredient = ingredient.strip()
+            if ingredient:
+                query = """
+                INSERT INTO recipe_ing (recipe_id, ingredient)
+                VALUES (%s, %s)
+                """
+                execute_query(query, (recipe_id, ingredient))
+        
+        return JSONResponse(content={"message": "Recipe created successfully"}, status_code=201)
+
+    except Exception as e:
+        # Log the exception if needed, and return an error response
+            raise HTTPException(status_code=500, detail="Failed to create recipe")
+    
     #validate JWT - fail with message, must be logged in user, auth > 0
     #validate img not null, name != "", instructions > ?, ingredients > 0
     #create embedding of ingredient list
@@ -382,12 +428,27 @@ def create(request: Request):
     #save files - instructions, image, vector(?)    
     return
 
-@app.delete("/recipes/delete{id}")
-async def delete(id):
+@app.delete("/recipes/delete")
+async def delete(id: int, token: dict = Depends(get_JWT)):
     journal.send("--------\nIn recipes/delete",PRIORITY=6)
-    jwt = get_JWT(request)
-    payload = verify_token(jwt)
-    journal.send(f"payolad: {payload}")
+    jwt_token = token["jwt"]
+    payload = verify_token(jwt_token)
+    journal.send(f"payload: {payload}")
+    query = f"select creator from recipe where id = {id}"
+    response = fetch_data(query)
+    journal.send(f"response: {response}", PRIORITY=6)
+    
+    if payload.get("id") == response[0][0]:
+        query = f"delete from recipe_ing where recipe_id = {id}"
+        execute_query(query)
+        query = f"delete from recipe where id = {id}"
+        execute_query(query)
+        os.remove(f"./recipes/{id}.txt")
+        os.remove(f"./recipes/{id}.png")
+        return {"meg": f"successfully removed {id}"}
+    else:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+        
     #validate JWT - fail with message
     #get recipe from recipe table (recipe id passed)
     #user id from JWT == creator from recipe - fast fail with message
@@ -395,40 +456,155 @@ async def delete(id):
     #remove * from recipe_ingredients table where recipe = recipe id
     #remove recipe from recipe table
     #return successful removal
-    return
 
-@app.auth("/admin/auth")
-async def admin_auth():
-    journal.send("--------\nIn admin_auth",PRIORITY=6)
-    jwt = get_JWT(request)
-    payload = verify_token(jwt)
-    journal.send(f"payolad: {payload}",PRIORITY=6)
+
+def verify_admin(token):
+    payload = verify_token(token)
+    name=payload.get("sub")
+    auth=payload.get("auth")
+    id=payload.get("id")
+    if auth < 2:
+        raise HTTPException(status_code=401, detail="Not admin")    
+    return {"name": name, "auth": auth, "id": id}
+
+@app.get("/admin/list/users")
+async def admin_list_users(token: dict = Depends(get_JWT)):
+    journal.send("--------\nIn admin_list_users",PRIORITY=6)
+    verify_admin(token["jwt"])
+    query = "select id, name, email, auth from user"
+    response = fetch_data(query)
+    if response:
+        return response
+    else:
+        return {"msg": []}
+       
+@app.get("/admin/list/recipes")
+async def admin_list_recipes(token: dict = Depends(get_JWT)):
+    journal.send("--------\nIn admin_list_recipes",PRIORITY=6)
+    verify_admin(token["jwt"])
+    query = "select * from recipe where viewable = 0"
+    response = fetch_data(query)
+    if response:
+        return response
+    else:
+        return {"msg": []}
     
-    return
+@app.get("/admin/list/ingredients")
+async def admin_list_ingredients(token: dict = Depends(get_JWT)):
+    journal.send("--------\nIn admin_list_ingredients",PRIORITY=6)
+    verify_admin(token["jwt"])
+    query = "select * from ingredients where usable = 0"
+    response = fetch_data(query)
+    if response:
+        return response
+    else:
+        return {"msg": []}
 
-@app.auth("/admin/remove_user")
-async def admin_remove_user():
+
+@app.patch("/admin/change_auth")
+async def admin_change_auth(id:int, lvl: int, token: dict = Depends(get_JWT)):
+    journal.send("--------\nIn admin_change_auth",PRIORITY=6)
+    verify_admin(token["jwt"])
+    query = f"update user set auth={lvl} where id={id}"
+    try:        
+        execute_query(query)
+        return {"msg": f"user[{id}]['auth'] = {lvl}"}
+    except Exception as e:
+        journal.send(f"ERROR {e}. did not change auth level to {lvl} for user[{id}]")
+        raise HTTPException(status_code=400, detail=f"ChangeAuth id={id}, lvl={lvl}. Operation could not be performed")
+
+@app.patch("/admin/remove_user")
+async def admin_remove_user(id: int, token: dict = Depends(get_JWT)):
     journal.send("--------\nIn admin_remove_user",PRIORITY=6)
-    jwt = get_JWT(request)
-    payload = verify_token(jwt)
-    journal.send(f"payolad: {payload}",PRIORITY=6)
-    
-    return
+    verify_admin(token["jwt"])
+    empty_string = ""
+    query = f"update user set name={empty_string} where id={id}"
+    try:        
+        execute_query(query)
+        return {"msg": f"user[{id}]['name'] = {empty_string}"}
+    except Exception as e:
+        journal.send(f"ERROR {e}. did not remove user[{id}]")
+        raise HTTPException(status_code=400, detail=f"RemoveUser id={id}. Operation could not be performed")
 
-@app.auth("/admin/recipe")
-async def admin_recipe():
-    journal.send("--------\nIn admin_recipe",PRIORITY=6)
-    jwt = get_JWT(request)
-    payload = verify_token(jwt)
-    journal.send(f"payolad: {payload}",PRIORITY=6)
-    
-    return
+@app.patch("/admin/recipe/accept")
+async def admin_recipe_accept(id: int, token: dict = Depends(get_JWT)):
+    journal.send("--------\nIn admin_recipe_accept",PRIORITY=6)
+    verify_admin(token["jwt"])
+    query = f"update recipe set viewable = 1 where id = {id}"
+    try:
+        execute_query(query)
+        return {"msg": "ingredient accepted"}
+    except Exception as e:
+        journal.send(f"Error attempting to accept recipe[{id}]: {e}")
+        raise HTTPException(status_code=400, detail=f"RecipeAccept id={id}. Operation could not be performed")
 
-@app.auth("/admin/ingredient")
-async def admin_ingredient():
-    journal.send("--------\nIn admin_ingredient",PRIORITY=6)
-    jwt = get_JWT(request)
-    payload = verify_token(jwt)
-    journal.send(f"payolad: {payload}",PRIORITY=6)
-    
-    return
+
+
+@app.delete("/admin/recipe/reject")
+async def admin_recipe_reject(id: int, token: dict = Depends(get_JWT)):
+    journal.send("--------\nIn admin_recipe_reject",PRIORITY=6)
+    verify_admin(token["jwt"])
+    try:
+        try:
+            os.remove(f"./recipes/{id}.txt")
+        except FileNotFoundError:
+            journal.send(f"File ./recipes/{id}.txt not found.", PRIORITY=5)
+        
+        try:
+            os.remove(f"./recipes/{id}.png")
+        except FileNotFoundError:
+            journal.send(f"File ./recipes/{id}.png not found.", PRIORITY=5)
+        query = f"delete from recipe_ing where recipe_id={id}"
+        execute_query(query)
+        journal.send("executed query 1", PRIORITY=6)
+        query = f"delete from recipe where id={id}"
+        execute_query(query)
+        journal.send("executed query 2", PRIORITY=6)
+        return {"msg": "recipe[{id}] deleted"}
+    except Exception as e:
+        journal.send(f"error in delete recipe[{id}]: {e}")  
+        raise HTTPException(status_code=400, detail=f"RecipeReject id={id}. ERROR {e}. Operation could not be performed")
+
+@app.patch("/admin/ingredient/accept")
+async def admin_ingredient_accept(id: int, token: dict = Depends(get_JWT)):
+    journal.send("--------\nIn admin_ingredient_accept",PRIORITY=6)
+    verify_admin(token["jwt"])
+    query = f"update ingredients set usable = 1 where id = {id}"
+    try:
+        execute_query(query)
+        return {"msg": "ingredient accepted"}
+    except Exception as e:
+        journal.send(f"Error attempting to accept ingredient[{id}]: {e}")
+        raise HTTPException(status_code=400, detail=f"IngAccept id={id}. ERROR {e}. Operation could not be performed")
+
+@app.delete("/admin/ingredient/reject")
+async def admin_ingredient_reject(id: int, token: dict = Depends(get_JWT)):
+    journal.send("--------\nIn admin_ingredient_reject",PRIORITY=6)
+    verify_admin(token["jwt"])
+    query = f"select recipe_id from recipe_ing where ingredient_id={id}"
+    try:
+        response = fetch_data(query)
+        journal.send(f"response: {response}", PRIORITY=6)
+        if response:
+            for recipe in response:
+                recipe_id = recipe[0]
+                query = f"delete from recipe_ing where recipe_id={recipe_id}"
+                execute_query(query)
+                query = f"delete from recipe where id={recipe_id}"
+                execute_query(query)
+                try:
+                    os.remove(f"./recipes/{recipe_id}.txt")
+                except FileNotFoundError:
+                    journal.send(f"File ./recipes/{recipe_id}.txt not found.", PRIORITY=5)
+                
+                try:
+                    os.remove(f"./recipes/{recipe_id}.png")
+                except FileNotFoundError:
+                    journal.send(f"File ./recipes/{recipe_id}.png not found.", PRIORITY=5)
+
+        query = f"delete from ingredients where id={id}"
+        execute_query(query)
+        return {"msg": f"ingredient[{id}] successfully removed"}
+    except Exception as e:
+        journal.send(f"IngAccept id={id}. ERROR {e}. Operation could not be performed", PRIORITY=4)
+        raise HTTPException(status_code=400, detail=f"IngAccept id={id}. ERROR {e}. Operation could not be performed")
