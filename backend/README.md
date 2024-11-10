@@ -36,8 +36,11 @@ URL https://recipe.naurot.com
 ### GET /recipes/view
 - returns all viewable recipes in JSON format
 
-### GET /recipes/ai
-- future feature
+### GET /recipes/ai?id={}
+// lists recipes whose ingredient list vectorization is most similar to the vectorization(id) in descending order
+- should be available irrespective of logged in status
+- if id not in recipe, returns failure
+- returns all recipes sorted by vectorization in descending order
 
 ### POST /recipes/create
 - only logged in user can create recipes
