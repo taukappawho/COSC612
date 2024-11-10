@@ -123,6 +123,15 @@ class TestAuthorizationChanges(unittest.TestCase):
         
         self.assertIn(f"user[{self.bhuvan_user_id}]['auth'] = {self.lvl_none}", response.text, "Failed to lower authorization to none.") 
 
+    def test_lower_user_with_none_level_admin_logged_in(self):
+        headers = {'Authorization': self.get_auth(self.valid_payload)}
+        url = f"{self.url_change_auth}?id={self.bhuvan_user_id}&lvl={self.lvl_none}"
+        print(url)
+
+        response = request("PATCH", url, headers=headers, data=self.valid_payload, files=self.files)
+        print(response.text)
+        self.assertIn(f"user[{self.bhuvan_user_id}]['auth'] = {self.lvl_none}", response.text, "Failed maintain none authorization.")
+
     def test_lower_user_does_not_exist_admin_logged_in(self):
         invalid_id=-1
         headers = {'Authorization': self.get_auth(self.valid_payload)}
