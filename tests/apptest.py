@@ -67,7 +67,7 @@ class TestAuthorizationChanges(unittest.TestCase):
 
         response = request("PATCH", url, headers=headers, data=self.valid_payload, files=self.files)
         print(response.text)
-        self.assertIn(f"user[{self.jamie_user_id}]['auth'] = {self.lvl_admin}", response.text, "Failed maintain admin authorization.")
+        self.assertIn(f"user[{self.jamie_user_id}]['auth'] = {self.lvl_admin}", response.text, "Failed to maintain admin authorization.")
 
     def test_raise_invalid_user_admin_logged_in(self):
         invalid_id=-1
@@ -121,7 +121,7 @@ class TestAuthorizationChanges(unittest.TestCase):
         response = request("PATCH", url, headers=headers, data=self.valid_payload, files=self.files)
         print(response.text)
         
-        self.assertIn(f"user[{self.bhuvan_user_id}]['auth'] = {self.lvl_none}", response.text, "Failed to lower authorization to none.") 
+        self.assertIn(f"user[{self.bhuvan_user_id}]['auth'] = {self.lvl_none}", response.text, "Failed to maintain none authorization.") 
 
     def test_lower_user_with_none_level_admin_logged_in(self):
         headers = {'Authorization': self.get_auth(self.valid_payload)}
