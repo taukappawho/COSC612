@@ -1,8 +1,12 @@
-import unittest
-from unittest.mock import patch
-from fastapi.testclient import TestClient
-from main.backend.app import app
+import unittest #for testing
+from unittest.mock import patch #mock some functions for simplicity
+from fastapi.testclient import TestClient #api connectivity
+from main.backend.app import app #the app
 
+'''
+Use Case 1: Admin raise authorization
+6 test cases
+'''
 class TestAdminRaiseAuth(unittest.TestCase):
 
     def setUp(self):
