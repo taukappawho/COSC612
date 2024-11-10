@@ -1,57 +1,171 @@
-import unittest
-from main.backend.app import admin_change_auth
+import unittest #for testing
+from unittest.mock import patch #mocking patch
+from fastapi.testclient import TestClient #connect to the api
+from main.backend.app import app #the app
 
-class TestAdminChangeAuth(unittest.TestCase):
-    
+#Use Case 1: Admin Raise Authorization
+#6 test cases
+class TestAdminRaiseAuth(unittest.TestCase):
+
     def setUp(self):
-        self.admin_logged_in = True  #simulate admin logged-in state
-        self.existing_users = {"testUser": "none"}  #simulate a basic user authorization level store
+        self.client = TestClient(app)
+        self.valid_token = {"jwt": "valid_admin_token"}
+        self.invalid_token = {"jwt": "invalid_token"}
 
-    def admin_change_auth(self, user, level, admin_logged_in):
-        if not admin_logged_in:
-            raise PermissionError("Admin privileges required")
-        if user not in self.existing_users:
-            raise ValueError("User does not exist")
-        if level not in ["none", "user", "admin"]:
-            raise ValueError("Invalid authorization level")
-        #changing authorization level
-        self.existing_users[user] = level
-        return self.existing_users[user]
+    @patch("main.backend.app.verify_admin")
+    @patch("main.backend.app.execute_query")
+    def test_user_with_none_admin_logged_in(self, mock_execute_query, mock_verify_admin):
+        user_id = 1
+        new_level = 1  # Raise from none to user level
+        mock_verify_admin.return_value = True
+        mock_execute_query.return_value = None
 
-    def test_raise_authorization_to_user(self):
-        user = "testUser"
-        level = "user"
-        self.assertEqual(self.admin_change_auth(user, level, self.admin_logged_in), "user")
+        response = self.client.patch(
+            "/admin/change_auth", params={"id": user_id, "lvl": new_level},
+            headers={"Authorization": f"Bearer {self.valid_token['jwt']}"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["msg"], f"user[{user_id}]['auth'] = {new_level}")
 
-    def test_raise_authorization_to_admin(self):
-        user = "testUser"
-        level = "admin"
-        self.assertEqual(self.admin_change_auth(user, level, self.admin_logged_in), "admin")
+    @patch("main.backend.app.verify_admin")
+    @patch("main.backend.app.execute_query")
+    def test_user_with_user_level_admin_logged_in(self, mock_execute_query, mock_verify_admin):
+        user_id = 2
+        new_level = 3  # Raise from user to admin
+        mock_verify_admin.return_value = True
+        mock_execute_query.return_value = None
 
-    def test_no_change_on_admin_level(self):
-        user = "testUser"
-        level = "admin"
-        self.existing_users[user] = "admin"
-        self.assertEqual(self.admin_change_auth(user, level, self.admin_logged_in), "admin")
+        response = self.client.patch(
+            "/admin/change_auth", params={"id": user_id, "lvl": new_level},
+            headers={"Authorization": f"Bearer {self.valid_token['jwt']}"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["msg"], f"user[{user_id}]['auth'] = {new_level}")
 
-    def test_invalid_user(self):
-        user = "invalidUser"
-        level = "none"
-        with self.assertRaises(ValueError, msg="User does not exist"):
-            self.admin_change_auth(user, level, self.admin_logged_in)
+    @patch("main.backend.app.verify_admin")
+    @patch("main.backend.app.execute_query")
+    def test_user_with_admin_level_admin_logged_in(self, mock_execute_query, mock_verify_admin):
+        user_id = 3
+        new_level = 3  # Keep as admin level
+        mock_verify_admin.return_value = True
+        mock_execute_query.return_value = None
 
-    def test_admin_logged_out(self):
-        user = "testUser"
-        level = "user"
-        self.admin_logged_in = False
-        with self.assertRaises(PermissionError, msg="Admin privileges required"):
-            self.admin_change_auth(user, level, self.admin_logged_in)
+        response = self.client.patch(
+            "/admin/change_auth", params={"id": user_id, "lvl": new_level},
+            headers={"Authorization": f"Bearer {self.valid_token['jwt']}"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["msg"], f"user[{user_id}]['auth'] = {new_level}")
 
-    def test_invalid_level(self):
-        user = "testUser"
-        level = "superuser"
-        with self.assertRaises(ValueError, msg="Invalid authorization level"):
-            self.admin_change_auth(user, level, self.admin_logged_in)
+    @patch("main.backend.app.verify_admin")
+    def test_invalid_user_admin_logged_in(self, mock_verify_admin):
+        user_id = 9999
+        new_level = 1
+        mock_verify_admin.return_value = True
 
-if __name__ == '__main__':
+        response = self.client.patch(
+            "/admin/change_auth", params={"id": user_id, "lvl": new_level},
+            headers={"Authorization": f"Bearer {self.valid_token['jwt']}"}
+        )
+        self.assertEqual(response.status_code, 400)
+
+    @patch("main.backend.app.verify_admin")
+    def test_valid_user_admin_not_logged_in(self, mock_verify_admin):
+        user_id = 1
+        new_level = 2
+        mock_verify_admin.side_effect = Exception("Not authorized")
+
+        response = self.client.patch(
+            "/admin/change_auth", params={"id": user_id, "lvl": new_level},
+            headers={"Authorization": f"Bearer {self.invalid_token['jwt']}"}
+        )
+        self.assertEqual(response.status_code, 400)
+
+    @patch("main.backend.app.verify_admin")
+    def test_user_with_invalid_authorization_level(self, mock_verify_admin):
+        user_id = 1
+        new_level = 99  # Invalid level
+        mock_verify_admin.return_value = True
+
+        response = self.client.patch(
+            "/admin/change_auth", params={"id": user_id, "lvl": new_level},
+            headers={"Authorization": f"Bearer {self.valid_token['jwt']}"}
+        )
+        self.assertEqual(response.status_code, 400)
+
+#Use Case 2: Admin Lower Authorization
+#6 test cases
+class TestAdminLowerAuth(unittest.TestCase):
+
+    def setUp(self):
+        self.client = TestClient(app)
+        self.valid_token = {"jwt": "valid_admin_token"}
+
+    @patch("main.backend.app.verify_admin")
+    @patch("main.backend.app.execute_query")
+    def test_user_with_admin_level_admin_logged_in(self, mock_execute_query, mock_verify_admin):
+        user_id = 1
+        new_level = 2  # Lower from admin to user level
+        mock_verify_admin.return_value = True
+        mock_execute_query.return_value = None
+
+        response = self.client.patch(
+            "/admin/change_auth", params={"id": user_id, "lvl": new_level},
+            headers={"Authorization": f"Bearer {self.valid_token['jwt']}"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["msg"], f"user[{user_id}]['auth'] = {new_level}")
+
+    @patch("main.backend.app.verify_admin")
+    @patch("main.backend.app.execute_query")
+    def test_user_with_user_level_admin_logged_in(self, mock_execute_query, mock_verify_admin):
+        user_id = 2
+        new_level = 0  # Lower from user to none
+        mock_verify_admin.return_value = True
+        mock_execute_query.return_value = None
+
+        response = self.client.patch(
+            "/admin/change_auth", params={"id": user_id, "lvl": new_level},
+            headers={"Authorization": f"Bearer {self.valid_token['jwt']}"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["msg"], f"user[{user_id}]['auth'] = {new_level}")
+
+    @patch("main.backend.app.verify_admin")
+    def test_user_does_not_exist_admin_logged_in(self, mock_verify_admin):
+        user_id = 9999
+        new_level = 0
+        mock_verify_admin.return_value = True
+
+        response = self.client.patch(
+            "/admin/change_auth", params={"id": user_id, "lvl": new_level},
+            headers={"Authorization": f"Bearer {self.valid_token['jwt']}"}
+        )
+        self.assertEqual(response.status_code, 400)
+
+    @patch("main.backend.app.verify_admin")
+    def test_empty_user_string_admin_logged_in(self, mock_verify_admin):
+        new_level = 0
+        mock_verify_admin.return_value = True
+
+        response = self.client.patch(
+            "/admin/change_auth", params={"id": "", "lvl": new_level},
+            headers={"Authorization": f"Bearer {self.valid_token['jwt']}"}
+        )
+        self.assertEqual(response.status_code, 400)
+
+    @patch("main.backend.app.verify_admin")
+    def test_user_with_invalid_authorization_level(self, mock_verify_admin):
+        user_id = 1
+        new_level = -1  # Invalid level
+        mock_verify_admin.return_value = True
+
+        response = self.client.patch(
+            "/admin/change_auth", params={"id": user_id, "lvl": new_level},
+            headers={"Authorization": f"Bearer {self.valid_token['jwt']}"}
+        )
+        self.assertEqual(response.status_code, 400)
+
+
+if __name__ == "__main__":
     unittest.main()
