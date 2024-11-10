@@ -1,5 +1,4 @@
 import unittest #for testing
-from unittest.mock import patch #mocking patch
 from fastapi.testclient import TestClient #connect to the api
 from main.backend import app #the app
 
@@ -17,8 +16,8 @@ class TestAdminRaiseAuth(unittest.TestCase):
     def test_user_with_none_admin_logged_in(self, execute_query, verify_admin):
         user_id = 1
         new_level = 1  # Raise from none to user level
-        mock_verify_admin.return_value = True
-        mock_execute_query.return_value = None
+        verify_admin.return_value = True
+        execute_query.return_value = None
 
         response = self.client.patch(
             "/admin/change_auth", params={"id": user_id, "lvl": new_level},
@@ -32,8 +31,8 @@ class TestAdminRaiseAuth(unittest.TestCase):
     def test_user_with_user_level_admin_logged_in(self, execute_query, verify_admin):
         user_id = 2
         new_level = 3  # Raise from user to admin
-        mock_verify_admin.return_value = True
-        mock_execute_query.return_value = None
+        verify_admin.return_value = True
+        execute_query.return_value = None
 
         response = self.client.patch(
             "/admin/change_auth", params={"id": user_id, "lvl": new_level},
@@ -47,8 +46,8 @@ class TestAdminRaiseAuth(unittest.TestCase):
     def test_user_with_admin_level_admin_logged_in(self, execute_query, verify_admin):
         user_id = 3
         new_level = 3  # Keep as admin level
-        mock_verify_admin.return_value = True
-        mock_execute_query.return_value = None
+        verify_admin.return_value = True
+        execute_query.return_value = None
 
         response = self.client.patch(
             "/admin/change_auth", params={"id": user_id, "lvl": new_level},
@@ -61,7 +60,7 @@ class TestAdminRaiseAuth(unittest.TestCase):
     def test_invalid_user_admin_logged_in(self, verify_admin):
         user_id = 9999
         new_level = 1
-        mock_verify_admin.return_value = True
+        verify_admin.return_value = True
 
         response = self.client.patch(
             "/admin/change_auth", params={"id": user_id, "lvl": new_level},
@@ -73,7 +72,7 @@ class TestAdminRaiseAuth(unittest.TestCase):
     def test_valid_user_admin_not_logged_in(self, verify_admin):
         user_id = 1
         new_level = 2
-        mock_verify_admin.side_effect = Exception("Not authorized")
+        verify_admin.side_effect = Exception("Not authorized")
 
         response = self.client.patch(
             "/admin/change_auth", params={"id": user_id, "lvl": new_level},
@@ -85,7 +84,7 @@ class TestAdminRaiseAuth(unittest.TestCase):
     def test_user_with_invalid_authorization_level(self, verify_admin):
         user_id = 1
         new_level = 99  # Invalid level
-        mock_verify_admin.return_value = True
+        verify_admin.return_value = True
 
         response = self.client.patch(
             "/admin/change_auth", params={"id": user_id, "lvl": new_level},
@@ -103,11 +102,11 @@ class TestAdminLowerAuth(unittest.TestCase):
 
     @patch("main.backend.app.verify_admin")
     @patch("main.backend.app.execute_query")
-    def test_user_with_admin_level_admin_logged_in(self, mock_execute_query, mock_verify_admin):
+    def test_user_with_admin_level_admin_logged_in(self, execute_query, verify_admin):
         user_id = 1
         new_level = 2  # Lower from admin to user level
-        mock_verify_admin.return_value = True
-        mock_execute_query.return_value = None
+        verify_admin.return_value = True
+        execute_query.return_value = None
 
         response = self.client.patch(
             "/admin/change_auth", params={"id": user_id, "lvl": new_level},
@@ -118,11 +117,11 @@ class TestAdminLowerAuth(unittest.TestCase):
 
     @patch("main.backend.app.verify_admin")
     @patch("main.backend.app.execute_query")
-    def test_user_with_user_level_admin_logged_in(self, mock_execute_query, mock_verify_admin):
+    def test_user_with_user_level_admin_logged_in(self, execute_query, verify_admin):
         user_id = 2
         new_level = 0  # Lower from user to none
-        mock_verify_admin.return_value = True
-        mock_execute_query.return_value = None
+        verify_admin.return_value = True
+        execute_query.return_value = None
 
         response = self.client.patch(
             "/admin/change_auth", params={"id": user_id, "lvl": new_level},
@@ -132,10 +131,10 @@ class TestAdminLowerAuth(unittest.TestCase):
         self.assertEqual(response.json()["msg"], f"user[{user_id}]['auth'] = {new_level}")
 
     @patch("main.backend.app.verify_admin")
-    def test_user_does_not_exist_admin_logged_in(self, mock_verify_admin):
+    def test_user_does_not_exist_admin_logged_in(self, verify_admin):
         user_id = 9999
         new_level = 0
-        mock_verify_admin.return_value = True
+        verify_admin.return_value = True
 
         response = self.client.patch(
             "/admin/change_auth", params={"id": user_id, "lvl": new_level},
@@ -144,9 +143,9 @@ class TestAdminLowerAuth(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
 
     @patch("main.backend.app.verify_admin")
-    def test_empty_user_string_admin_logged_in(self, mock_verify_admin):
+    def test_empty_user_string_admin_logged_in(self, verify_admin):
         new_level = 0
-        mock_verify_admin.return_value = True
+        verify_admin.return_value = True
 
         response = self.client.patch(
             "/admin/change_auth", params={"id": "", "lvl": new_level},
@@ -155,10 +154,10 @@ class TestAdminLowerAuth(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
 
     @patch("main.backend.app.verify_admin")
-    def test_user_with_invalid_authorization_level(self, mock_verify_admin):
+    def test_user_with_invalid_authorization_level(self, verify_admin):
         user_id = 1
         new_level = -1  # Invalid level
-        mock_verify_admin.return_value = True
+        verify_admin.return_value = True
 
         response = self.client.patch(
             "/admin/change_auth", params={"id": user_id, "lvl": new_level},
