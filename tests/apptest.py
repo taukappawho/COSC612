@@ -37,7 +37,7 @@ class TestAuthorizationChanges(unittest.TestCase):
     
     '''RAISE AUTHORIZATION'''
 
-    def test_user_with_none_admin_logged_in(self):
+    def test_raise_user_with_none_admin_logged_in(self):
         headers = {'Authorization': self.get_auth()}
         url = f"{self.url_change_auth}?id={self.jamie_user_id}&lvl={self.lvl_user}"
         print(url)
@@ -46,7 +46,7 @@ class TestAuthorizationChanges(unittest.TestCase):
         print(response.text)
         self.assertIn(f"user[{self.jamie_user_id}]['auth'] = {self.lvl_user}", response.text, "Failed to raise authorization to user.")
 
-    def test_user_with_user_level_admin_logged_in(self):
+    def test_raise_user_with_user_level_admin_logged_in(self):
         headers = {'Authorization': self.get_auth()}
         url = f"{self.url_change_auth}?id={self.jamie_user_id}&lvl={self.lvl_admin}"
         print(url)
@@ -55,7 +55,7 @@ class TestAuthorizationChanges(unittest.TestCase):
         print(response.text)
         self.assertIn(f"user[{self.jamie_user_id}]['auth'] = {self.lvl_admin}", response.text, "Failed to raise authorization to admin.")
 
-    def test_user_with_admin_level_admin_logged_in(self):
+    def test_raise_user_with_admin_level_admin_logged_in(self):
         headers = {'Authorization': self.get_auth()}
         url = f"{self.url_change_auth}?id={self.jamie_user_id}&lvl={self.lvl_admin}"
         print(url)
@@ -64,7 +64,7 @@ class TestAuthorizationChanges(unittest.TestCase):
         print(response.text)
         self.assertIn(f"user[{self.jamie_user_id}]['auth'] = {self.lvl_admin}", response.text, "Failed maintain admin authorization.")
 
-    def test_invalid_user_admin_logged_in(self):
+    def test_raise_invalid_user_admin_logged_in(self):
         invalid_id=-1
         headers = {'Authorization': self.get_auth()}
         url = f"{self.url_change_auth}?id={invalid_id}&lvl={self.lvl_admin}"
@@ -75,7 +75,7 @@ class TestAuthorizationChanges(unittest.TestCase):
         #bug encountered
         self.assertNotIn(f"user[{invalid_id}]['auth'] = {self.lvl_admin}", response.text, "Invalid ID raised authorization to Admin.")
 
-    def test_valid_user_admin_not_logged_in(self):
+    def test_raise_valid_user_admin_not_logged_in(self):
         wrong_token='Bearer token'
         headers = {'Authorization': wrong_token}
         url = f"{self.url_change_auth}?id={self.jamie_user_id}&lvl={self.lvl_admin}"
@@ -84,7 +84,7 @@ class TestAuthorizationChanges(unittest.TestCase):
         response = request("PATCH", url, headers=headers, data=self.invalid_payload, files=self.files)
         print(response.text)
 
-    def test_user_with_invalid_authorization_level(self):
+    def test_raise_user_with_invalid_authorization_level(self):
         invalid_lvl=3
         headers = {'Authorization': self.get_auth()}
         url = f"{self.url_change_auth}?id={self.jamie_user_id}&lvl={invalid_lvl}"
@@ -98,7 +98,7 @@ class TestAuthorizationChanges(unittest.TestCase):
 
     '''LOWER AUTHORIZATION'''
         
-    def test_user_with_admin_level_admin_logged_in(self):
+    def test_lower_user_with_admin_level_admin_logged_in(self):
         headers = {'Authorization': self.get_auth()}
         url = f"{self.url_change_auth}?id={self.bhuvan_user_id}&lvl={self.lvl_user}"
         print(url)
@@ -108,7 +108,7 @@ class TestAuthorizationChanges(unittest.TestCase):
         
         self.assertIn(f"user[{self.bhuvan_user_id}]['auth'] = {self.lvl_user}", response.text, "Failed to lower authorization to user.")
 
-    def test_user_with_user_level_admin_logged_in(self):
+    def test_lower_user_with_user_level_admin_logged_in(self):
         headers = {'Authorization': self.get_auth()}
         url = f"{self.url_change_auth}?id={self.bhuvan_user_id}&lvl={self.lvl_none}"
         print(url)
@@ -118,7 +118,7 @@ class TestAuthorizationChanges(unittest.TestCase):
         
         self.assertIn(f"user[{self.bhuvan_user_id}]['auth'] = {self.lvl_none}", response.text, "Failed to lower authorization to none.") 
 
-    def test_user_does_not_exist_admin_logged_in(self):
+    def test_lower_user_does_not_exist_admin_logged_in(self):
         invalid_id=-1
         headers = {'Authorization': self.get_auth()}
         url = f"{self.url_change_auth}?id={invalid_id}&lvl={self.lvl_none}"
@@ -129,7 +129,7 @@ class TestAuthorizationChanges(unittest.TestCase):
         
         self.assertNotIn(f"user[{invalid_id}]['auth'] = {self.lvl_user}", response.text, "Invalid ID lowered authorization to user")
 
-    def test_valid_user_admin_not_logged_in(self):
+    def test_lower_valid_user_admin_not_logged_in(self):
 
         headers = {'Authorization': self.get_auth()}
         url = f"{self.url_change_auth}?id={self.bhuvan_user_id}&lvl={self.lvl_admin}"
@@ -139,7 +139,7 @@ class TestAuthorizationChanges(unittest.TestCase):
         print(response.text)
         print('not logged in')
 
-    def test_empty_user_string_admin_logged_in(self):
+    def test_lower_empty_user_string_admin_logged_in(self):
         empty_id=''
         headers = {'Authorization': self.get_auth()}
         url = f"{self.url_change_auth}?id={empty_id}&lvl={self.lvl_none}"
@@ -150,7 +150,7 @@ class TestAuthorizationChanges(unittest.TestCase):
         
         self.assertNotIn(f"user[{empty_id}]['auth'] = {self.lvl_none}", response.text, "Failure: Empty user string lowered authorization")
 
-    def test_user_with_invalid_authorization_level(self):
+    def test_lower_user_with_invalid_authorization_level(self):
         invalid_lvl=-1
         headers = {'Authorization': self.get_auth()}
         url = f"{self.url_change_auth}?id={self.bhuvan_user_id}&lvl={invalid_lvl}"
