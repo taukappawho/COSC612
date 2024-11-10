@@ -15,90 +15,90 @@ just use the recipes(login/create/reset) - you can add stuff into db and play ar
 
 ## endpoints
 URL https://recipe.naurot.com
-### /login
+### POST /login 
 - takes formdata name(string), password(string)
 - on success returns Auth bearer token to be passed back on future requests
    
-### /create
+### POST /create
 -   takes formdata name(string), email(string)
 -   if duplicate emails, return unsuccessful notification
 -   if len(name) < 5, returns unsuccessful notification
 -   if name is not unique, returns unsuccessful notification
 -   returns notification to check email to continue account creation
 
-### /reset
+### POST /reset
 - should be available irrespective of logged in status
 - takes formdata email(string)
 - if email not in database, returns invalid credentials
 - if the email belongs to a removed (banned) user, returns user has been banned
 - returns notification to check email to reset password
 
-### /recipes/view
+### GET /recipes/view
 - returns all viewable recipes in JSON format
 
-### /recipes/ai
+### GET /recipes/ai
 - future feature
 
-### /recipes/create
+### POST /recipes/create
 - only logged in user can create recipes
 - takes formdata name(string), img(string), instructions(string), ingredients(JSON string)
 - requires Auth token acquired at login
 - returns notification of success or failure
 
-### /recipes/delete?id={}
+### DELETE /recipes/delete?id={}
 - users can only delete their recipes
 - takes query parameter of recipe id
 - requires auth token acquired at login
 - returns notification of success or failure
 
-### /admin/list/user  
+### GET /admin/list/user  
 - requires auth token acquired at login and auth lvl = 2
 - returns list of all users
 - primarily used for changing auth lvl or banning
 
-### /admin/list/recipes
+### GET /admin/list/recipes
 //list all not-yet-approved recipes
 - requires auth token acquired at login and auth lvl = 2
 - returns list of all unviewable recipes
 - used to view recipes to either accept or reject
 
-### /admin/list/ingredients
+### GET /admin/list/ingredients
 //lists all not-yet-approved ingredients
 - requires auth token acquired at login and auth lvl = 2
 - returns list of unusable/unapproved ingredients
 - used to list ingredients for accepting or rejecting
 
-### /admin/change_auth?id={}&lvl={}
+### PATCH /admin/change_auth?id={}&lvl={}
 //changes a users auth level
 - requires auth token acquired at login and auth lvl = 2
 - takes a query parameter of user id(int) and auth lvl(int)
 - returns notification of success or failure
 
-### /admin/remove_user?id={}
+### PATCH /admin/remove_user?id={}
 //bans user from system
 - requires auth token acquired at login and auth lvl = 2
 - takes a query parameter user id(int)
 - returns notification of success or failure
 
-### /admin/recipe/accept?id={}
+### PATCH /admin/recipe/accept?id={}
 // if a recipe is eligible to be viewed, makes it viewable
 - requires auth token acquired at login and auth lvl = 2
 - take a query parameter of recipe id(int)
 - returns notification of success or failure
 
-### /admin/recipe/reject?id={}
+### DELETE /admin/recipe/reject?id={}
 // rejects a submitted (but not yet approved) recipe
 - requires auth token acquired at login and auth lvl = 2
 - take a query parameter of recipe id(int)
 - returns notification of success or failure
 
-### /admin/ingredient/accept?id={}
+### PATCH /admin/ingredient/accept?id={}
 // accepts an ingredient for use in recipes. a recipe which has an unaccepted ingredient can not be made viewable
 - requires auth token acquired at login and auth lvl = 2
 - take a query parameter of recipe id(int)
 - returns notification of success or failure
 
-### /admin/recipe/reject?id={}
+### DELETE /admin/recipe/reject?id={}
 // this only applies to ingredients that are on the not-yet-approved list (usable=0)
 // removes ingredient from ingredient Table
 // removes all recipes containing ingredient
