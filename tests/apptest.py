@@ -1,5 +1,5 @@
 import unittest
-from app import admin_change_auth
+from main.backend.app import admin_change_auth
 
 class TestAdminChangeAuth(unittest.TestCase):
     
