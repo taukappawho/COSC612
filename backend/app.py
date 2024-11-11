@@ -20,6 +20,8 @@ from collections import defaultdict
 
 load_dotenv()
 
+UNITS = ["slice","dash", "bunch", "dozen","ounce", "tsp", "Tbsp", "cup", "quart", "pound", "gal", "N/A"]
+
 mail_user=os.getenv("MAIL_USER")
 mail_pwd=os.getenv("MAIL_PWD")
 mail_user = "naurottest@gmail.com"
@@ -427,7 +429,19 @@ async def create_recipe(
     #   add quantity, measurement to recipe_ingredient table with keys from recipe and ingredient tables
     #save files - instructions, image, vector(?)    
     return
-
+@app.get("/recipes/create")
+async def send_form(token: dict = Depends(get_JWT)):
+    journal.send("--------\nIn Get Recipe Creation Form",PRIORITY=6)
+    jwt_token = token["jwt"]
+    payload = verify_token(jwt_token)
+    auth = payload.get("auth")
+    if auth < 1:
+        raise HTTPException(status_code=401, detail="Unauthorized attempt to create recipe")
+    query = f"select name, id from ingredients"
+    response = fetch_data(query) 
+    journal.send(f"GET FORM response: {response}")  
+    
+    
 @app.delete("/recipes/delete")
 async def delete(id: int, token: dict = Depends(get_JWT)):
     journal.send("--------\nIn recipes/delete",PRIORITY=6)
@@ -505,6 +519,12 @@ async def admin_list_ingredients(token: dict = Depends(get_JWT)):
 async def admin_change_auth(id:int, lvl: int, token: dict = Depends(get_JWT)):
     journal.send("--------\nIn admin_change_auth",PRIORITY=6)
     verify_admin(token["jwt"])
+    if (lvl < 0 or lvl > 2):
+        raise HTTPException(status_code=400, detail=f"ChangeAuth id={id}, lvl={lvl}. Operation could not be performed")
+    query = f"select name from user where id={id}"
+    response = fetch_data(query)
+    if not response:
+        raise HTTPException(status_code=400, detail=f"ChangeAuth id={id}, lvl={lvl}. User[{id}] does not exist")
     query = f"update user set auth={lvl} where id={id}"
     try:        
         execute_query(query)
