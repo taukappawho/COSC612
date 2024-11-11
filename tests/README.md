@@ -1,7 +1,7 @@
 # Backend tests
 ## 6 tests for Use Case 1
 | Test ID | Input                              | Expected Result                                    | Use Case |
-|---------|------------------------------------|----------------------------------------------------|----------|
+|:---------:|------------------------------------|----------------------------------------------------|:----------:|
 | 1.1     | (User with none, Admin logged in)  | User’s authorization raised to user                | 1        |
 | 1.2     | (User with user, Admin logged in)  | User’s authorization raised to admin               | 1        |
 | 1.3     | (User with admin, Admin logged in) | Authorization remains admin; no change             | 1        |
