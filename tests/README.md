@@ -22,5 +22,6 @@
 |   2.7   | (User with invalid authorization level) | Error: Invalid authorization level provided | 2 |
 
 ### Uses postman to connect to the server
+Run with `python ./apptest.py`.
 Tests written and documented by Jamie Cooper
 ###### (modularity could be greatly improved)
