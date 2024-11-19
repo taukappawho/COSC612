@@ -1,7 +1,7 @@
 from typing import Annotated, Optional
-from fastapi import FastAPI, Form, HTTPException, status, Query, Request, Depends
+from fastapi import FastAPI, Form, File, UploadFile, HTTPException, status, Query, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 import pymysql
 from passlib.context import CryptContext 
@@ -323,7 +323,7 @@ def view():
     journal.send("--------\nIn recipes/view", PRIORITY=6)
     
     query = (
-        "SELECT r.name AS recipe_name, r.id AS recipe_id, i.name AS ingredient_name, i.id AS ingredient_id, "
+        "SELECT r.name AS recipe_name, r.id AS recipe_id, r.instructions AS instructions, i.name AS ingredient_name, i.id AS ingredient_id, "
         "ri.quantity, ri.units FROM recipe r "
         "JOIN recipe_ing ri ON r.id = ri.recipe_id "
         "JOIN ingredients i ON ri.ingredient_id = i.id "
@@ -331,23 +331,25 @@ def view():
         "ORDER BY r.id, i.id"
     )
     response = fetch_data(query)
-    df = pd.DataFrame(response, columns=["recipe_name", "recipe_id", "ingredient_name", "ingredient_id", "quantity", "unit"])
+    df = pd.DataFrame(response, columns=["recipe_name", "recipe_id", "instructions", "ingredient_name", "ingredient_id", "quantity", "unit"])
     data = df.to_dict(orient="records")
 
-    recipes_dict = defaultdict(lambda: {"name": None, "id": None, "ingredients": [], "image": None, "instructions": None})
+    recipes_dict = defaultdict(lambda: {"name": None, "id": None, "instructions": None, "ingredients": [], "image": None, "instructions": None})
     for row in data:
         recipe_id = row["recipe_id"]
         if recipes_dict[recipe_id]["name"] is None:
             recipes_dict[recipe_id]["name"] = row["recipe_name"]
             recipes_dict[recipe_id]["id"] = recipe_id
+            
+            recipes_dict[recipe_id]["instructions"] = row["instructions"]
 
             # Add file paths if they exist
             image_path = os.path.join(RECIPE_DIRECTORY, f"{recipe_id}.png")
-            instructions_path = os.path.join(RECIPE_DIRECTORY, f"{recipe_id}.txt")
+            # instructions_path = os.path.join(RECIPE_DIRECTORY, f"{recipe_id}.txt")
             if os.path.exists(image_path):
                 recipes_dict[recipe_id]["image"] = f"/recipes/{recipe_id}.png"
-            if os.path.exists(instructions_path):
-                recipes_dict[recipe_id]["instructions"] = f"/recipes/{recipe_id}.txt"
+            # if os.path.exists(instructions_path):
+            #     recipes_dict[recipe_id]["instructions"] = f"/recipes/{recipe_id}.txt"
 
         recipes_dict[recipe_id]["ingredients"].append({
             "ingredient_name": row["ingredient_name"],
@@ -382,64 +384,129 @@ def get_JWT(request: Request):
     return {"jwt": jwt_token}
 
 
+# @app.post("/recipes/create")
+# async def create_recipe(
+#     name: Annotated[str, Form()],
+#     img: Annotated[str, Form()],
+#     instructions: Annotated[str, Form()],
+#     ingredients: Annotated[str, Form()],
+#     token: dict = Depends(get_JWT),  # Token is validated using the get_JWT function
+# ):
+#     jwt_token = token["jwt"]
+#     journal.send("--------\nIn recipes/create",PRIORITY=6)
+#     payload = verify_token(jwt_token)
+#     journal.send(f"payload: {payload}")
+#     if payload.get("auth") < 1:
+#         raise HTTPException(status_code=401, detail="Invalid token")
+#     if not name or not instructions or not ingredients:
+#         raise HTTPException(status_code=400, detail="Missing required fields")
+#     creator = payload.get("id")
+#     try:
+#         query = f"insert into recipe name='{name}', creator='{creator}', viewable=0"
+#         response = fetch_data(query)
+#         journal.send(f"response: {response}",PRIORITY=6)
+#             # Now handle ingredients (assuming ingredients is a comma-separated string)
+#         for ingredient in ingredients.split(","):
+#             ingredient = ingredient.strip()
+#             if ingredient:
+#                 query = """
+#                 INSERT INTO recipe_ing (recipe_id, ingredient)
+#                 VALUES (%s, %s)
+#                 """
+#                 execute_query(query, (recipe_id, ingredient))
+        
+#         return JSONResponse(content={"message": "Recipe created successfully"}, status_code=201)
+
+#     except Exception as e:
+#         # Log the exception if needed, and return an error response
+#             raise HTTPException(status_code=500, detail="Failed to create recipe")  
+
 @app.post("/recipes/create")
 async def create_recipe(
-    name: Annotated[str, Form()],
-    img: Annotated[str, Form()],
-    instructions: Annotated[str, Form()],
+    recipe_name: Annotated[str, Form()],
+    instruct: Annotated[str, Form()],
     ingredients: Annotated[str, Form()],
+    img: UploadFile = File(...),
     token: dict = Depends(get_JWT),  # Token is validated using the get_JWT function
 ):
     jwt_token = token["jwt"]
-    journal.send("--------\nIn recipes/create",PRIORITY=6)
     payload = verify_token(jwt_token)
-    journal.send(f"payload: {payload}")
+
     if payload.get("auth") < 1:
         raise HTTPException(status_code=401, detail="Invalid token")
-    if not name or not instructions or not ingredients:
+
+    if not recipe_name or not instruct or not ingredients or not img:
         raise HTTPException(status_code=400, detail="Missing required fields")
+
     creator = payload.get("id")
     try:
-        query = f"insert into recipe name='{name}', creator='{creator}', viewable=0"
-        response = fetch_data(query)
-        journal.send(f"response: {response}",PRIORITY=6)
-            # Now handle ingredients (assuming ingredients is a comma-separated string)
-        for ingredient in ingredients.split(","):
-            ingredient = ingredient.strip()
-            if ingredient:
-                query = """
-                INSERT INTO recipe_ing (recipe_id, ingredient)
-                VALUES (%s, %s)
-                """
-                execute_query(query, (recipe_id, ingredient))
+        # Insert recipe into the database
+        journal.send("creating recipe",PRIORITY=6)
+        query = f"INSERT INTO recipe (name, creator, viewable, instructions) VALUES ('{recipe_name}', {creator}, 0, '{instruct}') RETURNING id"
+        recipe_id = fetch_data(query)[0]
         
-        return JSONResponse(content={"message": "Recipe created successfully"}, status_code=201)
+        if not recipe_id:
+            raise HTTPException(status_code=500, detail=f"Failed to create recipe, new id not created: {str(e)}")
+        
+        recipe_id = recipe_id[0]
+        
+        try:
+            # Save the uploaded file  !!!wait unitl get recipe_id, then save as {recipe_id}.png
+            file_location = f"recipes/{recipe_id}.png"
+            with open(file_location, "wb") as f:
+                f.write(img.file.read())
+            
+            # Handle ingredients
+            journal.send("\tadding ingredients",PRIORITY=6)
+            for ingredient in ingredients.split(","):
+                ing = ingredient.split(" ")
+                query = f"INSERT INTO recipe_ing (recipe_id, ingredient_id, quantity, units) VALUES ({recipe_id}, {ing[0]}, {ing[1]}, {ing[2]})"
+                execute_query(query)
 
+            return JSONResponse(content={"message": "Recipe created successfully"}, status_code=201)
+        except Exception as e:
+            journal.send(f"Exception {e}",PRIORITY=6)
+            query = f"delete from recipe where id={recipe_id}"
+            execute_query(query)
+            raise HTTPException(status_code=500, detail=f"Failed to create recipe: {str(e)}")
     except Exception as e:
-        # Log the exception if needed, and return an error response
-            raise HTTPException(status_code=500, detail="Failed to create recipe")
-    
-    #validate JWT - fail with message, must be logged in user, auth > 0
-    #validate img not null, name != "", instructions > ?, ingredients > 0
-    #create embedding of ingredient list
-    #add *name,viewable=false,creator={username} to recipe table
-    #for all ingredients not in recipe table, prepend with *
-    #if any ingredient not in ingredient table, add to recipe table
-    #for all ingredients:
-    #   add quantity, measurement to recipe_ingredient table with keys from recipe and ingredient tables
-    #save files - instructions, image, vector(?)    
-    return
-@app.get("/recipes/create")
-async def send_form(token: dict = Depends(get_JWT)):
+        raise HTTPException(status_code=500, detail=f"Failed to create recipe: {str(e)}")
+
+@app.get("/recipes/create") #??? send create recipes form from here or ???
+async def send_form(request: Request, token: dict = Depends(get_JWT)):
     journal.send("--------\nIn Get Recipe Creation Form",PRIORITY=6)
     jwt_token = token["jwt"]
     payload = verify_token(jwt_token)
     auth = payload.get("auth")
     if auth < 1:
         raise HTTPException(status_code=401, detail="Unauthorized attempt to create recipe")
-    query = f"select name, id from ingredients"
-    response = fetch_data(query) 
-    journal.send(f"GET FORM response: {response}")  
+    context = {
+    "request": request,
+    "token": token
+    }
+    return templates.TemplateResponse("create.html", context)
+
+    # inject jwt in header
+# @app.get("/verify", response_class=HTMLResponse)
+# async def verify(request: Request,token = Query(...)):
+#     journal.send(f"----In verify: token: {token}",PRIORITY=6)
+#     response = verify_uuid(token)
+#     if response:
+#         response = response[0]
+#         if response[2] == "0":
+#             text = "Create Account"
+#         else:
+#             text = "Reset Password"
+#         journal.send(f"----In verify: uuid found: true",PRIORITY=6)
+#         context = {
+#             "request": request,
+#             "token": token,
+#             "text": text
+#         }
+#         return templates.TemplateResponse("password.html", context)
+#     else:
+#         journal.send(f"----In verify: uuid found: false",PRIORITY=6)        
+#         raise HTTPException(status_code=400, detail="Invalid or expired token")
     
     
 @app.delete("/recipes/delete")
@@ -457,7 +524,7 @@ async def delete(id: int, token: dict = Depends(get_JWT)):
         execute_query(query)
         query = f"delete from recipe where id = {id}"
         execute_query(query)
-        os.remove(f"./recipes/{id}.txt")
+        # os.remove(f"./recipes/{id}.txt")  --- moved instructions to db
         os.remove(f"./recipes/{id}.png")
         return {"meg": f"successfully removed {id}"}
     else:
@@ -525,8 +592,8 @@ async def admin_change_auth(id:int, lvl: int, token: dict = Depends(get_JWT)):
     response = fetch_data(query)
     if not response:
         raise HTTPException(status_code=400, detail=f"ChangeAuth id={id}, lvl={lvl}. User[{id}] does not exist")
-    query = f"update user set auth={lvl} where id={id}"
-    try:        
+    try: 
+        query = f"update user set auth={lvl} where id={id}"       
         execute_query(query)
         return {"msg": f"user[{id}]['auth'] = {lvl}"}
     except Exception as e:
@@ -537,9 +604,13 @@ async def admin_change_auth(id:int, lvl: int, token: dict = Depends(get_JWT)):
 async def admin_remove_user(id: int, token: dict = Depends(get_JWT)):
     journal.send("--------\nIn admin_remove_user",PRIORITY=6)
     verify_admin(token["jwt"])
+    query = f"select id from user where id={id}"
+    response = fetch_data(query)
+    if not response:
+        raise HTTPException(status_code=400, detail=f"RemoveUser id={id}. User[{id}] does not exist")
     empty_string = ""
-    query = f"update user set name={empty_string} where id={id}"
-    try:        
+    try:      
+        query = f"update user set name={empty_string} where id={id}"  
         execute_query(query)
         return {"msg": f"user[{id}]['name'] = {empty_string}"}
     except Exception as e:
@@ -547,13 +618,18 @@ async def admin_remove_user(id: int, token: dict = Depends(get_JWT)):
         raise HTTPException(status_code=400, detail=f"RemoveUser id={id}. Operation could not be performed")
 
 @app.patch("/admin/recipe/accept")
+# SELECT * FROM `recipe_ing` WHERE recipe_id=1 and ingredient_id in (select id from ingredients where usable=false)
 async def admin_recipe_accept(id: int, token: dict = Depends(get_JWT)):
     journal.send("--------\nIn admin_recipe_accept",PRIORITY=6)
     verify_admin(token["jwt"])
-    query = f"update recipe set viewable = 1 where id = {id}"
+    query = f"SELECT recipe_id FROM `recipe_ing` WHERE recipe_id={id} and ingredient_id in (select id from ingredients where usable=0)"
+    response = fetch_data(query)
+    if response:
+        raise HTTPException(status_code=400, detail=f"RecipeAccept id={id}. Operation could not be performed. All ingredients must be usable")
     try:
+        query = f"update recipe set viewable = 1 where id = {id}"
         execute_query(query)
-        return {"msg": "ingredient accepted"}
+        return {"msg": "recipe accepted"}
     except Exception as e:
         journal.send(f"Error attempting to accept recipe[{id}]: {e}")
         raise HTTPException(status_code=400, detail=f"RecipeAccept id={id}. Operation could not be performed")
@@ -565,10 +641,10 @@ async def admin_recipe_reject(id: int, token: dict = Depends(get_JWT)):
     journal.send("--------\nIn admin_recipe_reject",PRIORITY=6)
     verify_admin(token["jwt"])
     try:
-        try:
-            os.remove(f"./recipes/{id}.txt")
-        except FileNotFoundError:
-            journal.send(f"File ./recipes/{id}.txt not found.", PRIORITY=5)
+        # try:
+        #     os.remove(f"./recipes/{id}.txt")
+        # except FileNotFoundError:
+        #     journal.send(f"File ./recipes/{id}.txt not found.", PRIORITY=5)
         
         try:
             os.remove(f"./recipes/{id}.png")
@@ -576,11 +652,11 @@ async def admin_recipe_reject(id: int, token: dict = Depends(get_JWT)):
             journal.send(f"File ./recipes/{id}.png not found.", PRIORITY=5)
         query = f"delete from recipe_ing where recipe_id={id}"
         execute_query(query)
-        journal.send("executed query 1", PRIORITY=6)
+        journal.send("\ndeleting recipe. deleted ingredients", PRIORITY=6)
         query = f"delete from recipe where id={id}"
         execute_query(query)
-        journal.send("executed query 2", PRIORITY=6)
-        return {"msg": "recipe[{id}] deleted"}
+        journal.send("\ndeleting recipe. deleted recipe", PRIORITY=6)
+        return {"msg": f"recipe[{id}] deleted"}
     except Exception as e:
         journal.send(f"error in delete recipe[{id}]: {e}")  
         raise HTTPException(status_code=400, detail=f"RecipeReject id={id}. ERROR {e}. Operation could not be performed")
@@ -612,10 +688,10 @@ async def admin_ingredient_reject(id: int, token: dict = Depends(get_JWT)):
                 execute_query(query)
                 query = f"delete from recipe where id={recipe_id}"
                 execute_query(query)
-                try:
-                    os.remove(f"./recipes/{recipe_id}.txt")
-                except FileNotFoundError:
-                    journal.send(f"File ./recipes/{recipe_id}.txt not found.", PRIORITY=5)
+                # try:
+                #     os.remove(f"./recipes/{recipe_id}.txt")
+                # except FileNotFoundError:
+                #     journal.send(f"File ./recipes/{recipe_id}.txt not found.", PRIORITY=5)
                 
                 try:
                     os.remove(f"./recipes/{recipe_id}.png")
@@ -628,3 +704,14 @@ async def admin_ingredient_reject(id: int, token: dict = Depends(get_JWT)):
     except Exception as e:
         journal.send(f"IngAccept id={id}. ERROR {e}. Operation could not be performed", PRIORITY=4)
         raise HTTPException(status_code=400, detail=f"IngAccept id={id}. ERROR {e}. Operation could not be performed")
+    
+@app.get("/recipes/{id}.png")
+async def get_image(id: int):
+    journal.send("--------\nIn get_image",PRIORITY=6)
+    image_path = os.path.join(RECIPE_DIRECTORY, f"{id}.png")
+    # Check if the file exists
+    if not os.path.exists(image_path):
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    # Return the image as a response
+    return FileResponse(image_path)
