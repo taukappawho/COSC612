@@ -3,8 +3,8 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Nov 04, 2024 at 11:31 AM
--- Server version: 10.11.9-MariaDB
+-- Generation Time: Dec 01, 2024 at 06:13 PM
+-- Server version: 10.11.10-MariaDB
 -- PHP Version: 7.2.34
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
@@ -131,12 +131,20 @@ INSERT INTO `ingredients` (`id`, `name`, `usable`) VALUES
 (92, 'shredded cheese', 1),
 (93, 'cooking spray', 1),
 (94, 'center cut pork chops', 1),
-(95, 'Italian seasoned breadcrumbs', 1),
+(95, 'italian seasoned breadcrumbs', 1),
 (97, 'pork tenderloin', 1),
 (98, 'fresh sage', 1),
 (99, 'prosciutto', 1),
 (100, 'condensed cream of mushroom soup', 1),
-(101, 'frozen tater tots', 1);
+(101, 'frozen tater tots', 1),
+(135, 'english mufiin', 1),
+(136, 'marinara', 1),
+(137, 'mozzarella', 1),
+(148, 'salmon', 0),
+(149, 'light brown sugar', 0),
+(150, 'dijon mustard', 0),
+(151, 'old bay', 1),
+(152, 'ribeye', 1);
 
 -- --------------------------------------------------------
 
@@ -149,20 +157,22 @@ CREATE TABLE `recipe` (
   `name` varchar(45) NOT NULL,
   `viewable` int(11) NOT NULL DEFAULT 0,
   `creator` int(10) UNSIGNED NOT NULL,
-  `image` varchar(32) NOT NULL,
-  `instructions` varchar(32) NOT NULL
+  `instructions` varchar(2000) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `recipe`
 --
 
-INSERT INTO `recipe` (`id`, `name`, `viewable`, `creator`, `image`, `instructions`) VALUES
-(2, 'peach cobbler', 1, 6, 'image_2.png', 'instructions_2.txt'),
-(3, 'Air Fryer Quesadillas', 0, 6, 'image_3.png', 'instructions_3.txt'),
-(4, '3-ingredient baked pork chops', 1, 1, 'image_4.png', 'instructions_4.txt'),
-(5, 'Prosciutto-Wrapped Pork Tenderloin with Crisp', 1, 6, 'image_5.png', 'instructions_5.txt'),
-(6, 'Tater Tot Casserole', 1, 1, 'image_6.png', 'instructions_6.txt');
+INSERT INTO `recipe` (`id`, `name`, `viewable`, `creator`, `instructions`) VALUES
+(2, 'peach cobbler', 1, 6, 'Combine peaches and sugar in a medium bowl. Stir well and let stand for 5 minutes.\r\n\r\nLiberally spray a slow cooker with cooking spray.\r\n\r\nStir peaches once more and add to the prepared slow cooker. Sprinkle cake mix evenly over the peaches; don\'t stir. Distribute butter pieces evenly over cake mix.\r\n\r\nCover and cook on High until cake is golden and bubbly around the edges, about 3Â½ hours. Turn off slow cooker and let stand 15 minutes before serving.'),
+(3, 'Air Fryer Quesadillas', 1, 13, 'Heat tortillas in the microwave until pliable, about 15 seconds.\r\n\r\nPlace 1/4 cup cheese on one half of each tortilla; fold other half of tortilla over cheese. Place in  air fryer. Spray with non-stick cooking spray. \r\n\r\nSet temperature to 375 degrees F (190 degrees C). Place quesadillas in the basket of the air fryer, and cook until golden brown, 4 to 6 minutes. Flip quesadillas, press down with a spatula, and air fry an additional 2 to 3 minutes.'),
+(4, '3-ingredient baked pork chops', 1, 1, 'Preheat the oven to 400 degrees F (200 degrees C). Whisk eggs in a shallow dish. Sprinkle pork chops with salt and pepper, if desired. Dip pork chops in eggs, and allow excess to drip off. Coat pork chops in breadcrumbs.\r\n\r\nPlace pork chops on a baking rack lightly coated with cooking spray; set rack in a rimmed baking sheet.\r\n\r\nBake in the preheated oven until a thermometer inserted in thickest portion registers 145 degrees F (63 degrees C), 20 to 25 minutes. Let rest 5 minutes before serving.'),
+(5, 'Prosciutto-Wrapped Pork Tenderloin with Crisp', 1, 6, 'Preheat oven to 350 degrees F (175 degrees C).\r\n\r\nLightly season pork with salt and black pepper. Arrange about 6 sage leaves over tenderloin. Wrap prosciutto around tenderloin and sage, overlapping prosciutto slightly; wrap in plastic wrap and refrigerate to allow prosciutto to set on pork tenderloin, 5 to 10 minutes. Remove plastic wrap.\r\n\r\nHeat olive oil in a skillet over medium heat. Fry wrapped tenderloin in the hot oil until prosciutto is crispy and lightly browned on all sides, 8 to 10 minutes. Transfer wrapped tenderloin to a baking dish, reserving oil in the skillet.\r\n\r\nBake tenderloin in the preheated oven until pork is cooked through, about 20 minutes. An instant-read thermometer inserted into the center should read at least 145 degrees F (63 degrees C).\r\n\r\nHeat reserved oil in the skillet over medium heat; fry remaining sage leaves until crispy, adding more oil as needed, about 5 minutes.\r\n\r\nSlice tenderloin and serve with crispy sage leaves.'),
+(6, 'Tater Tot Casserole', 1, 1, 'Here\'s a very brief overview of what you can expect when you make tater tot casserole at home:\r\n\r\n1. Cook the ground beef, then stir in the soup and seasonings.\r\n2. Transfer the beef to a baking dish. Top with tater tots, then the cheese.\r\n3. Bake until the tots are golden brown.'),
+(54, 'English Muffin Pizza Snacks', 0, 13, 'Heat oven to 400°F. Place muffin halves cut-side-up on a parchment-lined baking sheet; brush muffin halves generously with butter.\r\n\r\nBake until lightly toasted, about 10 minutes.\r\n\r\nLayer on marinara and mozzarella and bake until melted, 6 to 8 minutes.\r\n\r\nSprinkle on some sea salt and dried oregano and basil leaves before serving.'),
+(56, 'Salmon with Brown Sugar Glaze', 0, 13, 'Preheat the oven broiler and set an oven rack about 6 inches from the heat source. Grease the rack of a broiler pan with cooking spray.\r\n\r\nSeason salmon with salt and pepper, then place on the prepared broiler pan. Whisk together brown sugar and mustard in a small bowl; spoon mixture evenly over salmon.\r\n\r\nCook under the preheated broiler until fish flakes easily with a fork, 10 to 15 minutes.'),
+(57, 'Pesto Cheesy Chicken Rolls', 0, 13, 'Preheat the oven to 350 degrees F (175 degrees C). Spray a baking dish with cooking spray.\r\n\r\nSpread 2 to 3 tablespoons of the pesto sauce onto each flattened chicken breast. Place one slice of cheese over the pesto. Roll up tightly, and secure with toothpicks. Place in a lightly greased baking dish.\r\n\r\nBake uncovered for 45 to 50 minutes in the preheated oven, until chicken is nicely browned and juices run clear.');
 
 -- --------------------------------------------------------
 
@@ -199,15 +209,32 @@ INSERT INTO `recipe_ing` (`recipe_id`, `ingredient_id`, `quantity`, `units`) VAL
 (5, 1, 1, 1),
 (5, 2, 1, 1),
 (5, 12, 1, 6),
-(5, 97, 1, 10),
+(5, 97, 1, 9),
 (5, 98, 1, 2),
 (5, 99, 5, 4),
 (6, 1, 1, 1),
 (6, 2, 1, 1),
-(6, 15, 0.5, 10),
-(6, 92, 0.75, 10),
+(6, 15, 0.5, 9),
+(6, 92, 0.75, 9),
 (6, 100, 1, 11),
-(6, 101, 2, 10);
+(6, 101, 2, 9),
+(54, 1, 1, 1),
+(54, 39, 1, 2),
+(54, 48, 1, 1),
+(54, 53, 1, 5),
+(54, 135, 1, 0),
+(54, 136, 2, 6),
+(54, 137, 2, 0),
+(56, 1, 1, 1),
+(56, 2, 2, 1),
+(56, 93, 1, 1),
+(56, 148, 24, 4),
+(56, 149, 0.25, 7),
+(56, 150, 2, 6),
+(57, 39, 1, 2),
+(57, 65, 4, 11),
+(57, 93, 1, 1),
+(57, 137, 4, 0);
 
 -- --------------------------------------------------------
 
@@ -229,9 +256,11 @@ CREATE TABLE `user` (
 --
 
 INSERT INTO `user` (`name`, `password`, `email`, `auth`, `id`, `uuid`) VALUES
-('James', '$argon2id$v=19$m=65536,t=3,p=4$DeEcQ0iJ0XoPQYgxRmjt/Q$yLUj1QkDCsBytqNnB3jZmEBNB8xneyGuLrYCU9kscgw', 'jnauro1@students.towson.edu', 1, 1, 'N'),
-('John', 'abc123', 'etaylor5@students.towson.edu', 1, 2, 'N'),
-('James1', '$argon2id$v=19$m=65536,t=3,p=4$L0XoHWOMEWKM0ZpTCuG8lw$QhURmet+qkSHU4Eq3K6gTivTb3x8ln36888iuzEgUNc', 'naurotj@gmail.com', 1, 6, 'N');
+('James', '$argon2id$v=19$m=65536,t=3,p=4$DeEcQ0iJ0XoPQYgxRmjt/Q$yLUj1QkDCsBytqNnB3jZmEBNB8xneyGuLrYCU9kscgw', 'jnauro1@students.towson.edu', 2, 1, 'N'),
+('John', 'abc123', 'etaylor5@students.towson.edu', 2, 2, 'N'),
+('James1', '$argon2id$v=19$m=65536,t=3,p=4$L0XoHWOMEWKM0ZpTCuG8lw$QhURmet+qkSHU4Eq3K6gTivTb3x8ln36888iuzEgUNc', 'naurotj@gmail.com1', 2, 6, 'N'),
+(' Bhuvan', '$argon2id$v=19$m=65536,t=3,p=4$Y0zJmbPW2lvrvde6977Xug$gf2pd246R6JSYsYM6D/1C7GEs/6MeIqaGyR0Y/ohFCU', 'bhuvansaireddyseelam@gmail.com', 1, 8, 'N'),
+('James0', '$argon2id$v=19$m=65536,t=3,p=4$JUSoVUppzXkvZWxtrdVaKw$rJuhMB77afM8SWvEM5r4srF8WI1mcww3FtPWVVG4byA', 'naurotj@gmail.com', 1, 13, 'N');
 
 --
 -- Indexes for dumped tables
@@ -273,19 +302,19 @@ ALTER TABLE `user`
 -- AUTO_INCREMENT for table `ingredients`
 --
 ALTER TABLE `ingredients`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=103;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=153;
 
 --
 -- AUTO_INCREMENT for table `recipe`
 --
 ALTER TABLE `recipe`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=61;
 
 --
 -- AUTO_INCREMENT for table `user`
 --
 ALTER TABLE `user`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- Constraints for dumped tables

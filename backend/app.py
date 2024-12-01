@@ -1,4 +1,4 @@
-from typing import Annotated, Optional
+from typing import Annotated, List, Optional
 from fastapi import FastAPI, Form, File, UploadFile, HTTPException, status, Query, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
@@ -30,8 +30,17 @@ mail_pwd = "nhic asfe vtxp rcru"
 
 app = FastAPI()
 origins = [
+    "https://recipe.naurot.com/recipes/create",
+    "http://194.195.92.140:443",
+    "https://194.195.92.140:443",
+    "http://recipe.naurot.com",
+    "https://recipe.naurot.com",
     "http://bawlmorean.com",
     "https://bawlmorean.com",
+    "http://192.168.12.232:3000",
+    "https://192.168.12.232:3000",
+    "http://localhost:3000",
+    "https://localhost:3000"
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -179,10 +188,17 @@ def send_mail(user, email, route, effect,subject):
     
 templates = Jinja2Templates(directory="templates")
 
+# options route
+@app.options("/{path:path}")
+async def preflight_handler():
+    journal.send("inside of options",  PRIORITY=6)
+    return JSONResponse(status_code=200)
+
+
 @app.post("/login")
 async def login(name: Annotated[str, Form()], password: Annotated[str, Form()]):
-    journal.send("******\n******\n******")
-    journal.send(f"name: {name}, password: {password}")
+    journal.send("-"*60)
+    journal.send(f"/login name: {name}")
     #retrieve name, password
     #validate name length - return fail on nonconformance
     if len(name) < 5:
@@ -195,7 +211,7 @@ async def login(name: Annotated[str, Form()], password: Annotated[str, Form()]):
         if len(response) == 0:
             raise HTTPException(status_code=401, detail="Invalid credentials")
         response = response[0]
-        journal.send(f"pwd: {password}, pwd: {response[3]}")
+        # journal.send(f"pwd: {password}, pwd: {response[3]}")
         if not verify_password(password, response[3]):
             raise HTTPException(status_code=401, detail="Invalid credentials") 
         # print(f"response: {response}")
@@ -219,7 +235,7 @@ async def create(name: Annotated[str, Form()], email: Annotated[str, Form()]):
     #if email in database - fail fast
     query = f"select email, uuid from user where email='{email}'"
     response = fetch_data(query)
-    journal.send(f"----- response: {response}",PRIORITY=6)
+    # journal.send(f"----- response: {response}",PRIORITY=6)
     if len(response) > 0 and response[0][1] == "N":
         return {"msg": "account already exists!"}
     
@@ -276,7 +292,7 @@ async def reset(email: Annotated[str, Form()]):
 
 @app.get("/verify", response_class=HTMLResponse)
 async def verify(request: Request,token = Query(...)):
-    journal.send(f"----In verify: token: {token}",PRIORITY=6)
+    # journal.send(f"----In verify: token: {token}",PRIORITY=6)
     response = verify_uuid(token)
     if response:
         response = response[0]
@@ -284,7 +300,7 @@ async def verify(request: Request,token = Query(...)):
             text = "Create Account"
         else:
             text = "Reset Password"
-        journal.send(f"----In verify: uuid found: true",PRIORITY=6)
+        # journal.send(f"----In verify: uuid found: true",PRIORITY=6)
         context = {
             "request": request,
             "token": token,
@@ -292,15 +308,18 @@ async def verify(request: Request,token = Query(...)):
         }
         return templates.TemplateResponse("password.html", context)
     else:
-        journal.send(f"----In verify: uuid found: false",PRIORITY=6)        
+        # journal.send(f"----In verify: uuid found: false",PRIORITY=6)        
         raise HTTPException(status_code=400, detail="Invalid or expired token")
 
 @app.post("/password")
 async def password(password: Annotated[str, Form()], token: Annotated[str, Query(...)]):
-    journal.send(f"-----In password: {password}\n\ttoken: {token}",PRIORITY=6)
+    journal.send(f"-----In password: ",PRIORITY=6)
+    if len(password) < 5:
+        journal.send(f"password: `{password}` has length `{len(password)}`",PRIORITY=6)
+        raise HTTPException(status_code=401, detail="Error: incorrect password length")
     query = f"select * from user where uuid='{token}'"
     response = fetch_data(query)
-    journal.send(f"-----in password {response}",PRIORITY=6) 
+    # journal.send(f"-----in password {response}",PRIORITY=6) 
     if len(response) == 0:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
     if len(response) > 1:
@@ -310,7 +329,7 @@ async def password(password: Annotated[str, Form()], token: Annotated[str, Query
         auth = 1
     else:
         auth = response[3]
-    journal.send(f"-----in password {response}",PRIORITY=6)
+    # journal.send(f"-----in password {response}",PRIORITY=6)
     password = hash_password(password)
     query = f"update user set uuid='N', auth={auth}, password='{password}' where name='{response[0]}'"
     execute_query(query)
@@ -318,29 +337,43 @@ async def password(password: Annotated[str, Form()], token: Annotated[str, Query
 RECIPE_DIRECTORY = "/home/user/backend/recipes"
 
 @app.get("/recipes/view")
-def view():
+def view(ing: List[int] = Query(None)):
     # query params ing_list, (offset, limit)?
     journal.send("--------\nIn recipes/view", PRIORITY=6)
-    
-    query = (
-        "SELECT r.name AS recipe_name, r.id AS recipe_id, r.instructions AS instructions, i.name AS ingredient_name, i.id AS ingredient_id, "
-        "ri.quantity, ri.units FROM recipe r "
-        "JOIN recipe_ing ri ON r.id = ri.recipe_id "
-        "JOIN ingredients i ON ri.ingredient_id = i.id "
-        "WHERE r.viewable = true "
-        "ORDER BY r.id, i.id"
-    )
+    # changed below with creator
+    if ing is None:
+        journal.send(f"ing: {ing}", PRIORITY=6)
+        query = (
+            "SELECT r.name AS recipe_name, r.id AS recipe_id, r.instructions AS instructions, r.creator as creator, i.name AS ingredient_name, i.id AS ingredient_id, "
+            "ri.quantity, ri.units FROM recipe r "
+            "JOIN recipe_ing ri ON r.id = ri.recipe_id "
+            "JOIN ingredients i ON ri.ingredient_id = i.id "
+            "WHERE r.viewable = true "
+            "ORDER BY r.id, i.id"
+        )
+    else:
+        journal.send(f"ing: {ing}", PRIORITY=6)
+        ing_list = ",".join(map(str,ing))
+        query = (
+            "SELECT r.name AS recipe_name, r.id AS recipe_id, r.instructions AS instructions, r.creator as creator, i.name AS ingredient_name, i.id AS ingredient_id, "
+            "ri.quantity, ri.units FROM recipe r "
+            "JOIN recipe_ing ri ON r.id = ri.recipe_id "
+            "JOIN ingredients i ON ri.ingredient_id = i.id "
+            "WHERE r.viewable = true and r.id IN (SELECT recipe_id "
+            f"FROM recipe_ing WHERE ingredient_id IN ({ing_list}) "
+            f"GROUP BY recipe_id HAVING COUNT(DISTINCT ingredient_id) = {len(ing)}) ORDER BY r.id, i.id")
+        journal.send(f"query: {query}")
     response = fetch_data(query)
-    df = pd.DataFrame(response, columns=["recipe_name", "recipe_id", "instructions", "ingredient_name", "ingredient_id", "quantity", "unit"])
+    df = pd.DataFrame(response, columns=["recipe_name", "recipe_id", "instructions", "creator", "ingredient_name", "ingredient_id", "quantity", "unit"])
     data = df.to_dict(orient="records")
-
-    recipes_dict = defaultdict(lambda: {"name": None, "id": None, "instructions": None, "ingredients": [], "image": None, "instructions": None})
+    recipes_dict = defaultdict(lambda: {"name": None, "id": None, "instructions": None, "creator": None, "ingredients": [], "image": None, "instructions": None})
     for row in data:
         recipe_id = row["recipe_id"]
         if recipes_dict[recipe_id]["name"] is None:
             recipes_dict[recipe_id]["name"] = row["recipe_name"]
             recipes_dict[recipe_id]["id"] = recipe_id
-            
+    # changed below with creator
+            recipes_dict[recipe_id]["creator"] = row["creator"]
             recipes_dict[recipe_id]["instructions"] = row["instructions"]
 
             # Add file paths if they exist
@@ -374,6 +407,19 @@ def ai():
     #   return recipes that map to vectors
     return
 
+@app.get("/recipes/ingredients")
+def ingredients():
+    journal.send("--------\nIn recipes/ingredients",PRIORITY=6)
+    query = f"select name, id from ingredients order by name asc"
+    response = fetch_data(query)
+    if not response:
+        raise HTTPException(status_code=400, detail="Error retrievinbg ingredient list")    
+    try:
+        data = {row[0]: row[1] for row in response}
+    except KeyError:
+        raise HTTPException(status_code=500, detail="Unexpected data format from the database")
+    return data
+
 def get_JWT(request: Request):
     jwt_token = request.headers.get("Authorization")
     if not jwt_token:
@@ -382,44 +428,6 @@ def get_JWT(request: Request):
             raise HTTPException(status_code=401, detail="Invalid authorization scheme. Expected 'Bearer <token>'")
     jwt_token = jwt_token[len("Bearer "):].strip()    
     return {"jwt": jwt_token}
-
-
-# @app.post("/recipes/create")
-# async def create_recipe(
-#     name: Annotated[str, Form()],
-#     img: Annotated[str, Form()],
-#     instructions: Annotated[str, Form()],
-#     ingredients: Annotated[str, Form()],
-#     token: dict = Depends(get_JWT),  # Token is validated using the get_JWT function
-# ):
-#     jwt_token = token["jwt"]
-#     journal.send("--------\nIn recipes/create",PRIORITY=6)
-#     payload = verify_token(jwt_token)
-#     journal.send(f"payload: {payload}")
-#     if payload.get("auth") < 1:
-#         raise HTTPException(status_code=401, detail="Invalid token")
-#     if not name or not instructions or not ingredients:
-#         raise HTTPException(status_code=400, detail="Missing required fields")
-#     creator = payload.get("id")
-#     try:
-#         query = f"insert into recipe name='{name}', creator='{creator}', viewable=0"
-#         response = fetch_data(query)
-#         journal.send(f"response: {response}",PRIORITY=6)
-#             # Now handle ingredients (assuming ingredients is a comma-separated string)
-#         for ingredient in ingredients.split(","):
-#             ingredient = ingredient.strip()
-#             if ingredient:
-#                 query = """
-#                 INSERT INTO recipe_ing (recipe_id, ingredient)
-#                 VALUES (%s, %s)
-#                 """
-#                 execute_query(query, (recipe_id, ingredient))
-        
-#         return JSONResponse(content={"message": "Recipe created successfully"}, status_code=201)
-
-#     except Exception as e:
-#         # Log the exception if needed, and return an error response
-#             raise HTTPException(status_code=500, detail="Failed to create recipe")  
 
 @app.post("/recipes/create")
 async def create_recipe(
@@ -436,6 +444,7 @@ async def create_recipe(
         raise HTTPException(status_code=401, detail="Invalid token")
 
     if not recipe_name or not instruct or not ingredients or not img:
+        journal.send(f"Exception in create: {recipe_name}, {instruct}, {ingredients}, {img}",PRIORITY=6)
         raise HTTPException(status_code=400, detail="Missing required fields")
 
     creator = payload.get("id")
@@ -458,11 +467,14 @@ async def create_recipe(
             
             # Handle ingredients
             journal.send("\tadding ingredients",PRIORITY=6)
+            # TODO go through ingredient list finding
             for ingredient in ingredients.split(","):
                 ing = ingredient.split(" ")
                 query = f"INSERT INTO recipe_ing (recipe_id, ingredient_id, quantity, units) VALUES ({recipe_id}, {ing[0]}, {ing[1]}, {ing[2]})"
                 execute_query(query)
-
+                
+                
+# TODO  gather all ing[0], get ing name, find vector
             return JSONResponse(content={"message": "Recipe created successfully"}, status_code=201)
         except Exception as e:
             journal.send(f"Exception {e}",PRIORITY=6)
@@ -482,42 +494,41 @@ async def send_form(request: Request, token: dict = Depends(get_JWT)):
         raise HTTPException(status_code=401, detail="Unauthorized attempt to create recipe")
     context = {
     "request": request,
-    "token": token
+    "token": jwt_token
     }
     return templates.TemplateResponse("create.html", context)
 
-    # inject jwt in header
-# @app.get("/verify", response_class=HTMLResponse)
-# async def verify(request: Request,token = Query(...)):
-#     journal.send(f"----In verify: token: {token}",PRIORITY=6)
-#     response = verify_uuid(token)
-#     if response:
-#         response = response[0]
-#         if response[2] == "0":
-#             text = "Create Account"
-#         else:
-#             text = "Reset Password"
-#         journal.send(f"----In verify: uuid found: true",PRIORITY=6)
-#         context = {
-#             "request": request,
-#             "token": token,
-#             "text": text
-#         }
-#         return templates.TemplateResponse("password.html", context)
-#     else:
-#         journal.send(f"----In verify: uuid found: false",PRIORITY=6)        
-#         raise HTTPException(status_code=400, detail="Invalid or expired token")
-    
+@app.put("/recipes/ingredients")
+async def insert_ingredient(ing: str, token: dict=Depends(get_JWT)):
+    journal.send(f"attempting to add ingredient: {ing}",PRIORITY=6)
+    jwt_token = token["jwt"]
+    payload = verify_token(jwt_token)
+    auth = payload.get("auth")
+    if auth < 1:
+        raise HTTPException(status_code=401, detail="Unauthorized attempt to insert ingredient")
+    # query = f"insert into ingredients where name='{ing}', usable=0 returning id"
+    ing = ing.lower().strip()
+    query = f"INSERT INTO `ingredients`(`id`, `name`, `usable`) VALUES ('','{ing}','') returning id, name, usable"
+    try:
+        response = fetch_data(query)
+        journal.send(f"{response}, {response[0]}",PRIORITY=5)
+        return {"response": {"data": response[0]}}
+    except Exception as e:
+        query = f"select * from ingredients where name='{ing}'"
+        response = fetch_data(query)
+        journal.send(f"{response}, {response[0]}",PRIORITY=5)
+        return {"response": {"data": response[0]}}
+
     
 @app.delete("/recipes/delete")
 async def delete(id: int, token: dict = Depends(get_JWT)):
     journal.send("--------\nIn recipes/delete",PRIORITY=6)
     jwt_token = token["jwt"]
     payload = verify_token(jwt_token)
-    journal.send(f"payload: {payload}")
+    # journal.send(f"payload: {payload}")
     query = f"select creator from recipe where id = {id}"
     response = fetch_data(query)
-    journal.send(f"response: {response}", PRIORITY=6)
+    # journal.send(f"response: {response}", PRIORITY=6)
     
     if payload.get("id") == response[0][0]:
         query = f"delete from recipe_ing where recipe_id = {id}"
@@ -554,21 +565,15 @@ async def admin_list_users(token: dict = Depends(get_JWT)):
     verify_admin(token["jwt"])
     query = "select id, name, email, auth from user"
     response = fetch_data(query)
-    if response:
-        return response
-    else:
-        return {"msg": []}
+    return response
        
 @app.get("/admin/list/recipes")
 async def admin_list_recipes(token: dict = Depends(get_JWT)):
     journal.send("--------\nIn admin_list_recipes",PRIORITY=6)
     verify_admin(token["jwt"])
-    query = "select * from recipe where viewable = 0"
+    query = "select creator, name, id,instructions from recipe where viewable = 0 and id not in (select recipe_id from recipe_ing where ingredient_id in (select id from ingredients where usable = 0))"
     response = fetch_data(query)
-    if response:
-        return response
-    else:
-        return {"msg": []}
+    return response
     
 @app.get("/admin/list/ingredients")
 async def admin_list_ingredients(token: dict = Depends(get_JWT)):
@@ -576,10 +581,7 @@ async def admin_list_ingredients(token: dict = Depends(get_JWT)):
     verify_admin(token["jwt"])
     query = "select * from ingredients where usable = 0"
     response = fetch_data(query)
-    if response:
-        return response
-    else:
-        return {"msg": []}
+    return response
 
 
 @app.patch("/admin/change_auth")
@@ -608,9 +610,9 @@ async def admin_remove_user(id: int, token: dict = Depends(get_JWT)):
     response = fetch_data(query)
     if not response:
         raise HTTPException(status_code=400, detail=f"RemoveUser id={id}. User[{id}] does not exist")
-    empty_string = ""
+    empty_string = " "
     try:      
-        query = f"update user set name={empty_string} where id={id}"  
+        query = f"update user set name='{empty_string}' where id={id}"  
         execute_query(query)
         return {"msg": f"user[{id}]['name'] = {empty_string}"}
     except Exception as e:
