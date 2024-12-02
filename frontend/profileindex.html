@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>I Have No Mouth And I Must Eat: A Recipe Website Home Page</title>
+    <link rel="stylesheet" href="profile_style.css">
+</head>
+<body>
+
+    <header>
+        <nav>
+            <button class="menu-btn" onclick="toggleMenu()">&#9776;</button>
+            <div class="dropdown-content" id="dropdownMenu">
+                <a href="#home">Home</a>
+                <a href="#search">Search</a>
+            </div>
+        </nav>
+        <h1>I Have No Mouth And I Must Eat</h1>
+    </header>
+
+    <main>
+        <section class="profile">
+            <h2>User Profile</h2>
+            <div class="profile-info">
+                <img src="https://via.placeholder.com/200x200?text=Profile+Pic" alt="Profile Picture" class="profile-pic">
+                <h3 id="username">Monkey.D.Luffy</h3>
+                <p>Pirate King | Food Enthusiast | Recipe Creator | Ultimate Foodie</p>
+            </div>
+        </section>
+        <section class="recipes">
+            <h2>My Recipes</h2>
+            <div class="recipe-grid">
+                <div class="recipe-card" onclick="viewRecipe('pasta_primavera')">
+                    <img src="https://via.placeholder.com/300x200?text=Pasta+Primavera" alt="Pasta Primavera">
+                    <h3>Pasta Primavera</h3>
+                    <p>Delicious pasta with fresh vegetables.</p>
+                </div>
+                <div class="recipe-card" onclick="viewRecipe('chocolate_cake')">
+                    <img src="https://via.placeholder.com/300x200?text=Chocolate+Cake" alt="Chocolate Cake">
+                    <h3>Chocolate Cake</h3>
+                    <p>Rich and moist chocolate cake.</p>
+                </div>
+                <div class="recipe-card" onclick="viewRecipe('caesar_salad')">
+                    <img src="https://via.placeholder.com/300x200?text=Caesar+Salad" alt="Caesar Salad">
+                    <h3>Caesar Salad</h3>
+                    <p>Crisp romaine with homemade dressing.</p>
+                </div>
+                <div class="recipe-card" onclick="viewRecipe('tacos')">
+                    <img src="https://via.placeholder.com/300x200?text=Tacos" alt="Tacos">
+                    <h3>Tacos</h3>
+                    <p>Flavorful tacos with fresh ingredients.</p>
+                </div>
+                <!-- Add more recipes here -->
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 I Have No Mouth And I Must Eat: A Recipe Website</p>
+    </footer>
+
+    <script>
+function viewRecipe(recipeName) {
+    window.location.href = `${recipeName}.html`;
+}
+
+function toggleMenu() {
+    const dropdown = document.getElementById("dropdownMenu");
+    dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+}
+
+window.onclick = function(event) {
+    if (!event.target.matches('.menu-btn')) {
+        const dropdown = document.getElementById("dropdownMenu");
+        if (dropdown.style.display === "block") {
+            dropdown.style.display = "none";
+        }
+    }
+}
+</script>
+</body>
+</html>

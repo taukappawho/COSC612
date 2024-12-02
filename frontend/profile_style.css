@@ -1,0 +1,118 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #121212;
+    color: #f5f5f5;
+}
+
+header {
+    background-color: #1e1e1e;
+    color: #ffdd57;
+    text-align: center;
+    padding: 1em 0;
+    position: relative;
+}
+
+header h1 {
+    margin: 0;
+}
+
+/* Menu Button */
+nav {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+}
+
+.menu-btn {
+    background: none;
+    border: none;
+    color: #ffdd57;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+}
+
+/* Menu */
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #2e2e2e;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    margin-top: 10px;
+    text-align: left;
+}
+
+.dropdown-content a {
+    color: #ffdd57;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+.dropdown-content a:hover {
+    background-color: #3e3e3e;
+}
+
+/* Profile */
+.profile {
+    padding: 20px;
+    text-align: center;
+}
+
+.profile-info {
+    margin-bottom: 20px;
+}
+
+.profile-pic {
+    width: 200px;
+    border-radius: 50%;
+    border: 3px solid #ffdd57;
+    transition: transform 0.3s;
+}
+
+.profile-pic:hover {
+    transform: scale(1.1);
+}
+
+/* Recipes */
+.recipes {
+    padding: 20px;
+}
+
+.recipe-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.recipe-card {
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 15px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+    color: #ffdd57;
+}
+
+.recipe-card img {
+    width: 100%;
+    border-radius: 8px 8px 0 0;
+}
+
+.recipe-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+footer {
+    text-align: center;
+    padding: 10px;
+    background-color: #1e1e1e;
+    color: #ffdd57;
+}
